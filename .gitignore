@@ -1,5 +1,6 @@
 *pycache*
 .backup/
+data/
 
 run_GBA_centrality/output/
 
