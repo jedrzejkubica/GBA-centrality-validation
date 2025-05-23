@@ -1,0 +1,5 @@
+*pycache*
+Validation/figures/*
+.backup/
+output/
+run_all_experiments.sh
