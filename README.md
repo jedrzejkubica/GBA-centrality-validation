@@ -1,12 +1,12 @@
 # GBA-centrality-validation
 
-This repository contains scripts for the validation of **[GBA centrality](https://github.com/jjjk123/GBA-centrality)** as described in (x)[^1]. We performed a leave-one-out cross-validation and a tissue enrichment validation to compare the performance of GBA centrality, Random Walk with Restart (as implemented in MutliXrank[^2]) and PageRank[^3] (as implemented in NetworkX[^4]) in disease-gene prioritization. Furthermore, we investigated the choice of the parameters on the methods' performance.
+This repository contains scripts for the validation of **[GBA centrality](https://github.com/jedrzejkubica/GBA-centrality)** as described in (x)[^1]. We performed a leave-one-out cross-validation and a tissue enrichment validation to compare the performance of GBA centrality, Random Walk with Restart (as implemented in MutliXrank[^2]) and PageRank[^3] (as implemented in NetworkX[^4]) in disease-gene prioritization. Furthermore, we investigated the choice of the parameters on the methods' performance.
 
 ### Part 1. Leave-one-out cross-validation
 
 #### 🚀 Run GBA centrality 
 
-Set-up and use GBA-centrality as described in: https://github.com/jjjk123/GBA-centrality
+Set-up and use GBA-centrality as described in: https://github.com/jedrzejkubica/GBA-centrality
 
 All scripts are in [run_GBA_centrality/](run_GBA_centrality/):
 - calculate scores for left-out genes using [leave_one_out_scores.py](run_GBA_centrality/leave_one_out_scores.py)
@@ -40,6 +40,12 @@ sed -i '1d' seeds.txt  # remove header
 ```
 
 Set-up MultiXrank as described in: https://github.com/anthbapt/multixrank
+```
+# create an output folder
+mkdir MMAF
+```
+
+Create config.yml and modify if necessary. We provide an example file [here](run_MultiXrank/default/config.yml).
 
 All scripts are in [run_MultiXrank/](run_MultiXrank/):
 - calculate scores for all genes using [run_multixrank.py](run_MultiXrank/run_multixrank.py)
@@ -47,7 +53,7 @@ All scripts are in [run_MultiXrank/](run_MultiXrank/):
 python run_multixrank.py MMAF
 ```
 
-- modify config.yml and calculate ranks for left-out genes using [run_leave_one_out.py](run_MultiXrank/run_leave_one_out.py). It creates config_ENSGleftout.yml and seeds_ENSGleftout.txt for each left-out gene. Then it runs MultiXrank for each left-out gene and saves its rank to RWR_ranks_leave_one_out.tsv
+- calculate ranks for left-out genes using [run_leave_one_out.py](run_MultiXrank/run_leave_one_out.py). It creates config_ENSGleftout.yml and seeds_ENSGleftout.txt for each left-out gene. Then it runs MultiXrank for each left-out gene and saves its rank to RWR_ranks_leave_one_out.tsv
 ```
 python run_leave_one_out.py MMAF
 ```
