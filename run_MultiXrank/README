@@ -1,0 +1,39 @@
+12/02/2025
+organized output files for high confidence and low confidence interactomes in .backup/
+
+11/02/2025
+repeat for the low quality interactome
+
+4/02/2025 (upd from 6/01/2025)
+> copy interactome from GBA centrality
+cp /home/kubicaj/workspace/GBA-centrality/Interactome/interactome_human.sif /home/kubicaj/workspace/MultiXrank/MMAF/multiplex/1/.
+> remove the "pp" column in interactome_human.sif and save to interactome_human.tsv
+
+> create seeds.txt (without MMAF genes "not in interactome" from GBA-centrality log.txt)
+(! no need for causalGenes_infertility.tsv, parse_gene2ENSG.py or Uniprot_output.tsv)
+cd MMAF/
+ln -s /home/kubicaj/workspace/GBA-centrality/output/MMAF/alpha05_d10/scores_leave_one_out.tsv .
+awk '{print $1}' scores_leave_one_out.tsv > seeds.txt
+sed -i '1d' seeds.txt  # remove header
+
+> run MultiXrank, modify MMAF/config.yml if necessary
+source ~/pythonvenvs/pyEnv_Multixrank/bin/activate
+python run_multixrank.py MMAF
+	2025-01-06 11:07:12,615 :: ERROR :: multixrank :: These seed nodes were not found in the network: {'ENSG00000183914', 'ENSG00000181378', ...}
+	Solution: convert Interactome_human.sif to Interactome_human.tsv (ENSG1	ENSG2, just remove "pp" in Excel)
+
+> run MultiXrank leave-one-out
+> creates MMAF/seeds_ENSGleftout.txt and MMAF/config_ENSGleftout.yml for each left-out gene
+> then runs MultiXrank for each left out gene and saves its rank to MMAF/RWR_ranks_leave_one_out.tsv
+python run_leave_one_out.py MMAF
+
+> repeat for other phenotypes (eg. NOA)
+
+
+21/10/2024
+Convert MMAF gene names to ENSGs:
+/home/kubicaj/workspace/MultiXrank/MMAF/parse_gene2ENSG.py
+-> seeds.txt
+
+Remove seeds that are not in interactome by hand:
+'ENSG00000166596', 'ENSG00000089101', 'ENSG00000156042', 'ENSG00000197748', 'ENSG00000145075', 'ENSG00000146221', 'ENSG00000140057', 'ENSG00000077327'
