@@ -75,6 +75,14 @@ The notebook [validation.ipynb](validation.ipynb) can be used to:
 
 The notebook [validation_parameters.ipynb](validation_parameters.ipynb) can be used to investigate the choice of the parameters on the methods' performance.
 
+### Dependencies
+
+For validation we used Python 3.12 and the following Python libraries:
+- numpy==2.1.1
+- networkx==3.3
+- matplotlib==3.9.2
+- scipy==1.14.1
+
 ### References
 
 [^1]: https://doi.org/
