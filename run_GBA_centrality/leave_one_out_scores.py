@@ -23,63 +23,75 @@ import pathlib
 
 import argparse
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+PATH_TO_GBA="/home/kubicaj/Software/GBA-centrality"
+sys.path.append(PATH_TO_GBA)
 import GBA_centrality
 import data_parser
 
 
-def leave_one_out(interactome, adjacency_matrices, causal_genes, alpha):
+def leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA):
     '''
     arguments:
-    - interactome: type=networkx.Graph
-    - adjacency_matrices: list of scipy sparse arrays as returned by GBA_centrality.get_adjacency_matrices()
-    - causal_genes: dict of causal genes with key=ENSG, value=1
+    - interactome: list of "edges", an edge is a tuple (source, dest, weight) where
+      source and dest are ints, and weight is a float
+    - ENSG2idx: type=dict, key=ENSG, value=unique identifier for the ENSG, these are
+      consecutive ints starting at 0
+    - causal_genes: list of floats, one per gene, value=1 if gene is causal and 0 otherwise
+    - alpha: attenuation coefficient (parameter set by user)
 
     returns:
-    - scores_left_out: dict with scores for left-out causal genes key=ENSG, value=scores
+    - scores_left_out: dict with scores for left-out causal genes, key=ENSG, value=score
     '''
     # initialize dict to store left-out scores
     scores_left_out = {}
 
-    for left_out in list(causal_genes.keys()):
-        logger.info("Leaving out %s", left_out)
-        del causal_genes[left_out]
-        scores = GBA_centrality.calculate_scores(interactome, adjacency_matrices, causal_genes, alpha)
-
-        # save the left-out score
-        scores_left_out[left_out] = scores[left_out]
-
-        # add left-out back to causal_genes
-        causal_genes[left_out] = 1
-
+    for gene in ENSG2idx:
+        if causal_genes[ENSG2idx[gene]] == 1:
+            logger.info("Leaving out %s", gene)
+            causal_genes_copy = causal_genes.copy()
+            causal_genes_copy[ENSG2idx[gene]] = 0
+            scores = GBA_centrality.calculate_scores(interactome, ENSG2idx, causal_genes_copy, alpha, PATH_TO_GBA)
+            scores_left_out[gene] = scores[ENSG2idx[gene]]
+        else:
+            continue
+    
     return scores_left_out
 
+def scores_to_TSV(scores, ENSG2gene):
+    '''
+    arguments:
+    - scores: dict with scores for left-out causal genes, key=ENSG, value=score
 
-def main(interactome_file, causal_genes_file, uniprot_file, patho, alpha, d_max):
+    prints to STDOUT a TSV with 3 columns: ENSG gene_name score
+    '''
+    print("ENSG" + "\t" + "GENE" + "\t" + "SCORE")
+    for gene in scores:
+        score = scores[gene]
+        print(gene + "\t" + ENSG2gene[gene] + "\t" + "{:.3g}".format(score))
+
+
+def main(interactome_file, causal_genes_file, uniprot_file, alpha, weighted, directed, PATH_TO_GBA):
 
     logger.info("Parsing interactome")
-    interactome = data_parser.parse_interactome(interactome_file)
+    (interactome, ENSG2idx) = data_parser.parse_interactome(interactome_file, weighted, directed)
 
     logger.info("Parsing gene-to-ENSG mapping")
-    ENSG2gene, gene2ENSG, uniprot2ENSG = data_parser.parse_uniprot(uniprot_file)
+    (ENSG2gene, gene2ENSG) = data_parser.parse_uniprot(uniprot_file)
 
     logger.info("Parsing causal genes")
-    causal_genes = data_parser.parse_causal_genes(causal_genes_file, gene2ENSG, interactome, patho)
-
-    logger.info("Calculating powers of adjacency matrix")
-    adjacency_matrices = GBA_centrality.get_adjacency_matrices(interactome, d_max)
+    causal_genes = data_parser.parse_causal_genes(causal_genes_file, gene2ENSG, ENSG2idx)
 
     logger.info("Calculating leave-one-out scores")
-    scores = leave_one_out(interactome, adjacency_matrices, causal_genes, alpha)
+    scores = leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA)
 
     logger.info("Printing leave-one-out scores")
-    data_parser.scores_to_TSV(scores, ENSG2gene)
+    scores_to_TSV(scores, ENSG2gene)
 
     logger.info("Done!")
 
 
 if __name__ == "__main__":
-    script_name = os.path.basename(sys.argv[0])
+    (pathToCode, script_name) = os.path.split(os.path.realpath(sys.argv[0]))
     # configure logging, sub-modules will inherit this config
     logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
@@ -96,22 +108,37 @@ if __name__ == "__main__":
         """
     )
 
-    parser.add_argument('-i', '--interactome_file', type=pathlib.Path, required=True)
-    parser.add_argument('--causal_genes_file', type=pathlib.Path, required=True)
-    parser.add_argument('--uniprot_file', type=pathlib.Path, required=True)
-    parser.add_argument('--patho', default='MMAF', type=str)
-    parser.add_argument('--alpha', default=0.5, type=float)
-    parser.add_argument('--d_max', default=5, type=int)
+    parser.add_argument('--interactome',
+                        help='''filename (with path) of interactome in SIF format
+                                (3 tab-separated columns: ENSG1 weight/interaction_type ENSG2), type=str
+                                NOTE: second column is either weights (floats in [0, 1])
+                                or one interaction type (eg "pp"); if weighted, use parameter --weighted''',
+                        type=pathlib.Path,
+                        required=True)
+    parser.add_argument('--causal',
+                        help='TXT file (without a header) with 1 column: gene_name',
+                        type=pathlib.Path,
+                        required=True)
+    parser.add_argument('--uniprot',
+                        help='parsed Uniprot file from Interactome/uniprot_parser.py',
+                        type=pathlib.Path,
+                        required=True)
+    parser.add_argument('--alpha',
+                        help='attenuation coefficient (0 < alpha < 1)',
+                        default=0.5,
+                        type=float)
+    parser.add_argument('--weighted',
+                        help='use if graph is weighted',
+                        action='store_true')  # if present, set the value to True; otherwise False
+    parser.add_argument('--directed',
+                        help='use if graph is directed',
+                        action='store_true')
 
     args = parser.parse_args()
 
     try:
-        main(interactome_file=args.interactome_file,
-             causal_genes_file=args.causal_genes_file,
-             uniprot_file=args.uniprot_file,
-             patho=args.patho,
-             alpha=args.alpha,
-             d_max=args.d_max)
+        main(args.interactome, args.causal, args.uniprot, args.alpha, args.weighted,
+             args.directed, PATH_TO_GBA)
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
         sys.stderr.write("ERROR in " + script_name + " : " + repr(e) + "\n")
