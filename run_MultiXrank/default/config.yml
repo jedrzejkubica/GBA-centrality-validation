@@ -1,5 +1,5 @@
 seed: seeds.txt
-r: 0.7
+r: 0.5
 # self_loops: Are self-loops allowed? 1 yes, 0 not
 self_loops: 0
 # eta: Restart probability for each multiplex. Must sum up to one.

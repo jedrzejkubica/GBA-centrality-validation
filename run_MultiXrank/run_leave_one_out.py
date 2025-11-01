@@ -5,7 +5,7 @@ PHENOTYPE = sys.argv[1]
 
 CAUSAL_GENES_FILE = f"{PHENOTYPE}/seeds.txt"
 CONFIG_FILE = f"{PHENOTYPE}/config.yml"
-RANKS_LEAVE_ONE_OUT_FILE = f"{PHENOTYPE}/RWR_ranks_leave_one_out.tsv"
+RANKS_LEAVE_ONE_OUT_FILE = f"{PHENOTYPE}/RWR_ranks_LOO.tsv"
 
 
 def save_seeds(gene_list, out_file):
