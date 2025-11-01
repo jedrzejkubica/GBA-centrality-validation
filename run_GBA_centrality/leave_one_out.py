@@ -41,9 +41,11 @@ def leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA):
 
     returns:
     - scores_left_out: dict with scores for left-out causal genes, key=ENSG, value=score
+    - ranks_left_out: dict with ranks for left-out causal genes, key=ENSG, value=rank
     '''
-    # initialize dict to store left-out scores
+    # initialize dict to store left-out ranks
     scores_left_out = {}
+    ranks_left_out = {}
 
     for gene in ENSG2idx:
         if causal_genes[ENSG2idx[gene]] == 1:
@@ -51,41 +53,71 @@ def leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA):
             causal_genes_copy = causal_genes.copy()
             causal_genes_copy[ENSG2idx[gene]] = 0
             scores = GBA_centrality.calculate_scores(interactome, ENSG2idx, causal_genes_copy, alpha, PATH_TO_GBA)
+            # save score
             scores_left_out[gene] = scores[ENSG2idx[gene]]
+
+            # save rank
+            scores_sorted = sorted(scores, reverse=True)
+            rank = scores_sorted.index(scores[ENSG2idx[gene]]) + 1  # + 1 because ranks start at 1 not 0
+            ranks_left_out[gene] = rank
         else:
             continue
     
-    return scores_left_out
+    return(scores_left_out, ranks_left_out)
 
-def scores_to_TSV(scores, ENSG2gene):
+
+def scores_to_TSV(scores, ENSG2gene, scores_file):
     '''
     arguments:
     - scores: dict with scores for left-out causal genes, key=ENSG, value=score
+    - ENSG2gene: dict with key=ENSG, value=geneName
+    - scores_file: path to output file with scores
 
-    prints to STDOUT a TSV with 3 columns: ENSG gene_name score
+    saves scores to a TSV file scores_file with 3 columns: ENSG gene_name score
     '''
-    print("ENSG" + "\t" + "GENE" + "\t" + "SCORE")
-    for gene in scores:
-        score = scores[gene]
-        print(gene + "\t" + ENSG2gene[gene] + "\t" + "{:.3g}".format(score))
+    with open(scores_file, "w") as f:
+        f.write("ENSG" + "\t" + "GENE" + "\t" + "SCORE")
+        for gene in scores:
+            score = scores[gene]
+            f.write(gene + "\t" + ENSG2gene[gene] + "\t" + "{:.3g}".format(score))
 
 
-def main(interactome_file, causal_genes_file, uniprot_file, alpha, weighted, directed, PATH_TO_GBA):
+def ranks_to_TSV(ranks, ENSG2gene, ranks_file):
+    '''
+    arguments:
+    - ranks: dict with ranks for left-out causal genes, key=ENSG, value=rank
+    - ENSG2gene: dict with key=ENSG, value=geneName
+    - ranks_file: path to output file with ranks
+
+    saves ranks to a TSV file ranks_file with 3 columns: ENSG gene_name rank
+    '''
+    with open(ranks_file, "w") as f:
+        f.write("ENSG" + "\t" + "GENE" + "\t" + "RANK")
+        for gene in ranks:
+            rank = ranks[gene]
+            f.write(gene + "\t" + ENSG2gene[gene] + "\t" + str(rank))
+
+
+def main(interactome_file, causal_genes_file, uniprot_file, alpha, weighted, directed,
+         scores_file, ranks_file, PATH_TO_GBA):
 
     logger.info("Parsing interactome")
-    (interactome, ENSG2idx) = data_parser.parse_interactome(interactome_file, weighted, directed)
+    (interactome, ENSG2idx, idx2ENSG) = data_parser.parse_interactome(interactome_file, weighted, directed)
 
     logger.info("Parsing gene-to-ENSG mapping")
-    (ENSG2gene, gene2ENSG) = data_parser.parse_uniprot(uniprot_file)
+    (ENSG2gene, gene2ENSG, uniprot2ENSG) = data_parser.parse_uniprot(uniprot_file)
 
     logger.info("Parsing causal genes")
     causal_genes = data_parser.parse_causal_genes(causal_genes_file, gene2ENSG, ENSG2idx)
 
-    logger.info("Calculating leave-one-out scores")
-    scores = leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA)
+    logger.info("Calculating leave-one-out ranks")
+    (scores, ranks) = leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA)
 
     logger.info("Printing leave-one-out scores")
-    scores_to_TSV(scores, ENSG2gene)
+    scores_to_TSV(scores, ENSG2gene, scores_file)
+
+    logger.info("Printing leave-one-out ranks")
+    ranks_to_TSV(ranks, ENSG2gene, ranks_file)
 
     logger.info("Done!")
 
@@ -103,7 +135,7 @@ if __name__ == "__main__":
         prog=script_name,
         description="""
         Leave-one-out validation for GBA centrality.
-        For each causal gene, the method calculates its scores
+        For each causal gene, the method calculates its ranks
         when left-out from the causal gene list.
         """
     )
@@ -133,12 +165,20 @@ if __name__ == "__main__":
     parser.add_argument('--directed',
                         help='use if graph is directed',
                         action='store_true')
+    parser.add_argument('--scores',
+                        help='output file to save scores',
+                        type=pathlib.Path,
+                        required=True)
+    parser.add_argument('--ranks',
+                        help='output file to save ranks',
+                        type=pathlib.Path,
+                        required=True)
 
     args = parser.parse_args()
 
     try:
         main(args.interactome, args.causal, args.uniprot, args.alpha, args.weighted,
-             args.directed, PATH_TO_GBA)
+             args.directed, args.scores, args.ranks, PATH_TO_GBA)
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
         sys.stderr.write("ERROR in " + script_name + " : " + repr(e) + "\n")
