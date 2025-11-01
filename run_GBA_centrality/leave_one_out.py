@@ -76,10 +76,10 @@ def scores_to_TSV(scores, ENSG2gene, scores_file):
     saves scores to a TSV file scores_file with 3 columns: ENSG gene_name score
     '''
     with open(scores_file, "w") as f:
-        f.write("ENSG" + "\t" + "GENE" + "\t" + "SCORE")
+        f.write("ENSG" + "\t" + "GENE" + "\t" + "SCORE" + "\n")
         for gene in scores:
             score = scores[gene]
-            f.write(gene + "\t" + ENSG2gene[gene] + "\t" + "{:.3g}".format(score))
+            f.write(gene + "\t" + ENSG2gene[gene] + "\t" + "{:.3g}".format(score) + "\n")
 
 
 def ranks_to_TSV(ranks, ENSG2gene, ranks_file):
@@ -92,10 +92,10 @@ def ranks_to_TSV(ranks, ENSG2gene, ranks_file):
     saves ranks to a TSV file ranks_file with 3 columns: ENSG gene_name rank
     '''
     with open(ranks_file, "w") as f:
-        f.write("ENSG" + "\t" + "GENE" + "\t" + "RANK")
+        f.write("ENSG" + "\t" + "GENE" + "\t" + "RANK" + "\n")
         for gene in ranks:
             rank = ranks[gene]
-            f.write(gene + "\t" + ENSG2gene[gene] + "\t" + str(rank))
+            f.write(gene + "\t" + ENSG2gene[gene] + "\t" + str(rank) + "\n")
 
 
 def main(interactome_file, causal_genes_file, uniprot_file, alpha, weighted, directed,
