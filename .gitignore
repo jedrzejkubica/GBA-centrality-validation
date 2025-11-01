@@ -1,11 +1,8 @@
 *pycache*
-.backup/
-data/
+data/*
 
-run_GBA_centrality/output/
-
-run_MultiXrank/multixrank/
-run_MultiXrank/default/multiplex/
-run_MultiXrank/output/
+run_MultiXrank/*
+!run_MultiXrank/run_multixrank.py
+!run_MultiXrank/run_leave_one_out.py
 
 figures/*
