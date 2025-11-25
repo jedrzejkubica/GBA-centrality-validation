@@ -29,7 +29,7 @@ import GBA_centrality
 import data_parser
 
 
-def leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA):
+def leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA, threads):
     '''
     arguments:
     - interactome: list of "edges", an edge is a tuple (source, dest, weight) where
@@ -52,7 +52,7 @@ def leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA):
             logger.info("Leaving out %s", gene)
             causal_genes_copy = causal_genes.copy()
             causal_genes_copy[ENSG2idx[gene]] = 0
-            scores = GBA_centrality.calculate_scores(interactome, ENSG2idx, causal_genes_copy, alpha, PATH_TO_GBA)
+            scores = GBA_centrality.calculate_scores(interactome, ENSG2idx, causal_genes_copy, alpha, PATH_TO_GBA, threads)
             # save score
             scores_left_out[gene] = scores[ENSG2idx[gene]]
 
@@ -99,7 +99,7 @@ def ranks_to_TSV(ranks, ENSG2gene, ranks_file):
 
 
 def main(interactome_file, causal_genes_file, uniprot_file, alpha, weighted, directed,
-         scores_file, ranks_file, PATH_TO_GBA):
+         scores_file, ranks_file, PATH_TO_GBA, threads):
 
     logger.info("Parsing interactome")
     (interactome, ENSG2idx, idx2ENSG) = data_parser.parse_interactome(interactome_file, weighted, directed)
@@ -111,7 +111,7 @@ def main(interactome_file, causal_genes_file, uniprot_file, alpha, weighted, dir
     causal_genes = data_parser.parse_causal_genes(causal_genes_file, gene2ENSG, ENSG2idx)
 
     logger.info("Calculating leave-one-out ranks")
-    (scores, ranks) = leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA)
+    (scores, ranks) = leave_one_out(interactome, ENSG2idx, causal_genes, alpha, PATH_TO_GBA, threads)
 
     logger.info("Printing leave-one-out scores")
     scores_to_TSV(scores, ENSG2gene, scores_file)
@@ -173,12 +173,16 @@ if __name__ == "__main__":
                         help='output file to save ranks',
                         type=pathlib.Path,
                         required=True)
+    parser.add_argument('--threads',
+                        help='number of parallel threads to run, default=0 to use all available cores',
+                        default=0,
+                        type=int)
 
     args = parser.parse_args()
 
     try:
         main(args.interactome, args.causal, args.uniprot, args.alpha, args.weighted,
-             args.directed, args.scores, args.ranks, PATH_TO_GBA)
+             args.directed, args.scores, args.ranks, PATH_TO_GBA, args.threads)
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
         sys.stderr.write("ERROR in " + script_name + " : " + repr(e) + "\n")
