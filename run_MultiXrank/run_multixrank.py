@@ -8,7 +8,7 @@ import multixrank
 
 def main(phenotype: str):
 	logger.info("Running MultiXrank")
-	multixrank_obj = multixrank.Multixrank(config=f"{phenotype}config.yml", wdir=f"{phenotype}")
+	multixrank_obj = multixrank.Multixrank(config=f"{phenotype}/config.yml", wdir=f"{phenotype}")
 	ranking_df = multixrank_obj.random_walk_rank()
 
 	logger.info("Saving scores")
