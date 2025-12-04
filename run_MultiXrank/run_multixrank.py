@@ -12,9 +12,11 @@ def main(phenotype: str):
 	ranking_df = multixrank_obj.random_walk_rank()
 
 	logger.info("Saving scores")
-	multixrank_obj.write_ranking(ranking_df, path=f"{phenotype}/output_{phenotype}")
+	out = f"{phenotype}/output_{phenotype}"
+	multixrank_obj.write_ranking(ranking_df, path=out)
 
 	logger.info("Done!")
+	logger.info(f"Scores saved to {out}")
 
 
 if __name__ == "__main__":
