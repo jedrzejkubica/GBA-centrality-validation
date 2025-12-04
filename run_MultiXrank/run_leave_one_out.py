@@ -49,7 +49,7 @@ def main(phenotype: str):
         save_seeds(causal_genes_noLeftOut, f"{phenotype}/seeds_{leftOut}.txt")
 
         # for each causal gene, create config_causalGene.yml file with seed: seeds_causalGene.txt
-        save_config(config, leftOut)
+        save_config(phenotype, config, leftOut)
 
         # run MultiXrank for each left-out causal gene
         multixrank_obj = multixrank.Multixrank(config=f"{phenotype}/config_{leftOut}.yml",
