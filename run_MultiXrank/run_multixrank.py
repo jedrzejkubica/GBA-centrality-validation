@@ -27,8 +27,8 @@ if __name__ == "__main__":
 	logger = logging.getLogger(script_name)
 
 	parser = argparse.ArgumentParser(prog=script_name, description="""Run MultiXrank""")
-	parser.add_argument("--pheno", type=str, required=True
-		help="Phenotype of interest (str)")
+	parser.add_argument("--pheno", type=str, required=True,
+					 help="Phenotype of interest (str)")
 
 	args = parser.parse_args()
 
