@@ -1,8 +1,9 @@
 *pycache*
+.vscode/
+
 data/*
+figures/*
 
 run_MultiXrank/*
 !run_MultiXrank/run_multixrank.py
 !run_MultiXrank/run_leave_one_out.py
-
-figures/*
