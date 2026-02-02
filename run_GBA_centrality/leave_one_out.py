@@ -29,68 +29,6 @@ import GBA_centrality
 import data_parser
 
 
-def parse_uniprot(uniprot_file):
-    '''
-    Parses a tab-seperated Uniprot file produced by GBA_centrality/Interactome/uniprot_parser.py
-    with 7 columns (one record per line):
-    - Uniprot Primary Accession
-    - Taxonomy Identifier
-    - ENST (or a comma seperated list of ENSTs)
-    - ENSG (or a comma seperated list of ENSGs)
-    - Uniprot Secondary Accession (or a comma seperated list of Uniprot Secondary Accessions)
-    - GeneID (or a comma seperated list of GeneIDs)
-    - Gene Name (or a comma seperated list of Gene Names)
-
-    Returns:
-      - ENSG2gene: dict with key=ENSG, value=geneName
-      - uniprot2ENSG: dict with key=Primary accession, value=ENSG
-
-    Note: if more than one gene name is associated with a particular ENSG,
-          then keeping the first gene name from the list
-    '''
-    ENSG2gene = {}
-    uniprot2ENSG = {}
-
-    try:
-        f = open(uniprot_file, 'r')
-    except Exception as e:
-        logging.error("Opening provided uniprot file %s: %s", uniprot_file, e)
-        raise Exception("cannot open provided Uniprot file")
-
-    # skip header
-    line = f.readline()
-    if not line.startswith("Primary_AC\t"):
-        logging.error("uniprot file %s is headerless? expecting headers but got %s",
-                      uniprot_file, line)
-        raise Exception("Uniprot file problem")
-
-    for line in f:
-        split_line = line.rstrip('\r\n').split('\t')
-
-        # if some records are incomplete, die
-        if len(split_line) != 7:
-            logging.error("uniprot file %s line doesn't have 7 fields: %s",
-                          uniprot_file, line)
-            raise Exception("Uniprot file problem")
-
-        (AC_primary, TaxID, ENSTs, ENSGs, AC_secondary, GeneIDs, geneNames) = split_line
-
-        # make sure there is at least one ENSG and keep only the first one
-        if ENSGs == "":
-            continue
-        ENSG = ENSGs.split(',')[0]
-
-        # make sure there is at least one gene name and keep only the first one
-        if geneNames == "":
-            continue
-        geneName = geneNames.split(',')[0]
-
-        ENSG2gene[ENSG] = geneName
-        uniprot2ENSG[AC_primary] = ENSG
-
-    return(ENSG2gene, uniprot2ENSG)
-
-
 def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, threads):
     '''
     arguments:
@@ -128,62 +66,53 @@ def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, th
     return(scores_left_out, ranks_left_out)
 
 
-def scores_to_TSV(scores, uniprot2ENSG, ENSG2gene, scores_file):
+def scores_to_TSV(scores, scores_file):
     '''
     arguments:
-    - scores: dict with scores for left-out causal genes, key=ENSG, value=score
-    - uniprot2ENSG: dict with key=Primary AC, value=ENSG
-    - ENSG2gene: dict with key=ENSG, value=gene_name
+    - scores: dict with scores for left-out nodes, key=node, value=score
     - scores_file: path to output file with scores
 
-    saves scores to a TSV file scores_file with 3 columns: ENSG gene_name score
+    saves scores to a TSV file scores_file with 2 columns: node score
     '''
     with open(scores_file, "w") as f:
-        f.write("ENSG" + "\t" + "GENE" + "\t" + "SCORE" + "\n")
-        for protein in scores:
-            score = scores[protein]
-            ENSG = uniprot2ENSG[protein]
-            f.write(ENSG + "\t" + ENSG2gene[ENSG] + "\t" + "{:.3g}".format(score) + "\n")
+        f.write("NODE" + "\t" + "SCORE" + "\n")
+        for node in scores:
+            score = scores[node]
+            f.write(node + "\t" + "{:.3g}".format(score) + "\n")
 
 
-def ranks_to_TSV(ranks, uniprot2ENSG, ENSG2gene, ranks_file):
+def ranks_to_TSV(ranks, ranks_file):
     '''
     arguments:
-    - ranks: dict with ranks for left-out causal genes, key=ENSG, value=rank
-    - uniprot2ENSG: dict with key=Primary AC, value=ENSG
-    - ENSG2gene: dict with key=ENSG, value=gene_name
+    - ranks: dict with ranks for left-out causal genes, key=node, value=score
     - ranks_file: path to output file with ranks
 
-    saves ranks to a TSV file ranks_file with 3 columns: ENSG gene_name rank
+    saves scores to a TSV file scores_file with 2 columns: node rank
     '''
     with open(ranks_file, "w") as f:
-        f.write("ENSG" + "\t" + "GENE" + "\t" + "RANK" + "\n")
-        for protein in ranks:
-            rank = ranks[protein]
-            ENSG = uniprot2ENSG[protein]
-            f.write(ENSG + "\t" + ENSG2gene[ENSG] + "\t" + str(rank) + "\n")
+        f.write("NODE" + "\t" + "RANK" + "\n")
+        for node in ranks:
+            rank = ranks[node]
+            f.write(node + "\t" + str(rank) + "\n")
 
 
-def main(network_file, seeds_file, uniprot_file, alpha, weighted, directed,
+def main(network_file, seeds_file, alpha, weighted, directed,
          scores_file, ranks_file, PATH_TO_GBA, threads):
 
-    logger.info("Parsing interactome")
+    logger.info("Parsing network")
     (network, node2idx) = data_parser.parse_network(network_file, weighted, directed)
 
-    logger.info("Parsing protein-to-gene mapping")
-    (ENSG2gene, uniprot2ENSG) = parse_uniprot(uniprot_file)
-
-    logger.info("Parsing causal genes")
+    logger.info("Parsing seeds")
     (seeds, seeds_vector) = data_parser.parse_seeds(seeds_file, node2idx)
 
     logger.info("Calculating leave-one-out ranks")
     (scores, ranks) = leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, threads)
 
     logger.info("Printing leave-one-out scores")
-    scores_to_TSV(scores, uniprot2ENSG, ENSG2gene, scores_file)
+    scores_to_TSV(scores, scores_file)
 
     logger.info("Printing leave-one-out ranks")
-    ranks_to_TSV(ranks, uniprot2ENSG, ENSG2gene, ranks_file)
+    ranks_to_TSV(ranks, ranks_file)
 
     logger.info("Done!")
 
@@ -217,10 +146,6 @@ if __name__ == "__main__":
                         help='TXT file (without a header) with 1 seed per line',
                         type=pathlib.Path,
                         required=True)
-    parser.add_argument('--uniprot',
-                        help='parsed Uniprot file from Interactome/uniprot_parser.py',
-                        type=pathlib.Path,
-                        required=True)
     parser.add_argument('--alpha',
                         help='attenuation coefficient (0 < alpha < 1)',
                         default=0.5,
@@ -247,7 +172,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        main(args.network, args.seeds, args.uniprot, args.alpha, args.weighted,
+        main(args.network, args.seeds, args.alpha, args.weighted,
              args.directed, args.scores, args.ranks, PATH_TO_GBA, args.threads)
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
