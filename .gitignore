@@ -3,6 +3,7 @@
 
 data/*
 figures/*
+lowConfidence/
 
 run_MultiXrank/*
 !run_MultiXrank/run_multixrank.py
