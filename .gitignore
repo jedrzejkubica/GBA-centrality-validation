@@ -1,13 +1,17 @@
 *pycache*
 .vscode/
 
-data/*
-figures/*
-lowConfidence/
+data/
+figures/
 
-run_MultiXrank/*
-!run_MultiXrank/run_multixrank.py
-!run_MultiXrank/run_leave_one_out.py
+GBA-input/
+GBA-output/
+GBA-README
 
-run_NetCore/*
-!run_NetCore/run_leave_one_out.py
+multixrank-input/
+multixrank-output/
+multixrank-README
+
+netcore-input/
+netcore-output/
+netcore-README
