@@ -23,7 +23,7 @@ import pathlib
 
 import argparse
 
-PATH_TO_GBA="/home/kubicaj/Software/GBA-centrality"
+PATH_TO_GBA = "/home/kubicaj/Software/GBA-centrality"
 sys.path.append(PATH_TO_GBA)
 import GBA_centrality
 import data_parser
@@ -62,34 +62,33 @@ def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, th
         rank = scores_sorted.index(scores[node2idx[node]]) + 1  # + 1 because ranks start at 1 not 0
         ranks_left_out[node] = rank
 
-    
     return(scores_left_out, ranks_left_out)
 
 
-def scores_to_TSV(scores, scores_file):
+def scores_to_TSV(scores, out_dir):
     '''
     arguments:
     - scores: dict with scores for left-out nodes, key=node, value=score
-    - scores_file: path to output file with scores
+    - out_dir: path to output directory
 
     saves scores to a TSV file scores_file with 2 columns: node score
     '''
-    with open(scores_file, "w") as f:
+    with open(os.path.join(out_dir, "scores_LOO.tsv"), "w") as f:
         f.write("NODE" + "\t" + "SCORE" + "\n")
         for node in scores:
             score = scores[node]
             f.write(node + "\t" + "{:.3g}".format(score) + "\n")
 
 
-def ranks_to_TSV(ranks, ranks_file):
+def ranks_to_TSV(ranks, out_dir):
     '''
     arguments:
     - ranks: dict with ranks for left-out causal genes, key=node, value=score
-    - ranks_file: path to output file with ranks
+    - out_dir: path to output directory
 
     saves scores to a TSV file scores_file with 2 columns: node rank
     '''
-    with open(ranks_file, "w") as f:
+    with open(os.path.join(out_dir, "ranks_LOO.tsv"), "w") as f:
         f.write("NODE" + "\t" + "RANK" + "\n")
         for node in ranks:
             rank = ranks[node]
@@ -97,8 +96,8 @@ def ranks_to_TSV(ranks, ranks_file):
 
 
 def main(network_file, seeds_file, alpha, weighted, directed,
-         scores_file, ranks_file, PATH_TO_GBA, threads):
-
+         out_dir, PATH_TO_GBA, threads):
+    
     logger.info("Parsing network")
     (network, node2idx, idx2node) = data_parser.parse_network(network_file, weighted, directed)
 
@@ -108,23 +107,17 @@ def main(network_file, seeds_file, alpha, weighted, directed,
     logger.info("Calculating leave-one-out ranks")
     (scores, ranks) = leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, threads)
 
-    logger.info("Printing leave-one-out scores")
-    scores_to_TSV(scores, scores_file)
+    logger.info(f"Saving leave-one-out scores to {out_dir}")
+    scores_to_TSV(scores, out_dir)
 
-    logger.info("Printing leave-one-out ranks")
-    ranks_to_TSV(ranks, ranks_file)
+    logger.info(f"Saving leave-one-out ranks to {out_dir}")
+    ranks_to_TSV(ranks, out_dir)
 
     logger.info("Done!")
 
 
 if __name__ == "__main__":
     (pathToCode, script_name) = os.path.split(os.path.realpath(sys.argv[0]))
-    # configure logging, sub-modules will inherit this config
-    logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S',
-                        level=logging.DEBUG)
-    # set up logger: we want script name rather than 'root'
-    logger = logging.getLogger(script_name)
 
     parser = argparse.ArgumentParser(
         prog=script_name,
@@ -156,12 +149,8 @@ if __name__ == "__main__":
     parser.add_argument('--directed',
                         help='use if graph is directed',
                         action='store_true')
-    parser.add_argument('--scores',
-                        help='output file to save scores',
-                        type=pathlib.Path,
-                        required=True)
-    parser.add_argument('--ranks',
-                        help='output file to save ranks',
+    parser.add_argument('--out',
+                        help='output directory to save LOO scores and ranks files',
                         type=pathlib.Path,
                         required=True)
     parser.add_argument('--threads',
@@ -171,9 +160,22 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # create output directory if it doesn't exist
+    out_dir = args.out
+    os.makedirs(out_dir, exist_ok=True)
+
+    # configure logging, sub-modules will inherit this config
+    log_path = os.path.join(out_dir, "log_LOO.txt")
+    logging.basicConfig(filename=log_path,
+                        format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.DEBUG)
+    # set up logger: we want script name rather than 'root'
+    logger = logging.getLogger(script_name)
+
     try:
         main(args.network, args.seeds, args.alpha, args.weighted,
-             args.directed, args.scores, args.ranks, PATH_TO_GBA, args.threads)
+             args.directed, args.out, PATH_TO_GBA, args.threads)
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
         sys.stderr.write("ERROR in " + script_name + " : " + repr(e) + "\n")
