@@ -15,7 +15,7 @@ def parse_interactome(interactome_file, tmp_dir):
     """
     output_file = os.path.join(tmp_dir, "interactome_human.tsv")
     os.makedirs(tmp_dir, exist_ok=True)
-    awk_command = f"awk -v OFS='\\t' '{{print $1, $3}}' {interactome_file} > {output_file}"
+    awk_command = f"awk -v OFS='\t' '{{print $1, $3}}' {interactome_file} > {output_file}"
     subprocess.run(awk_command, shell=True, check=True)
 
 
@@ -71,7 +71,7 @@ def main(network, GBA_ranks, out_dir, config_path):
     parse_interactome(network, tmp_dir)
     parse_seeds(GBA_ranks, tmp_dir)
 
-    base_config = os.path.join(out_dir, 'config.yml')
+    base_config = os.path.join(tmp_dir, 'config.yml')
     shutil.copyfile(config_path, base_config)
 
     seeds_file = os.path.join(tmp_dir, 'seeds.txt')
@@ -80,7 +80,7 @@ def main(network, GBA_ranks, out_dir, config_path):
 
     logger.info(f"Found %d causal genes", len(causal_genes))
 
-    ranks_file = os.path.join(out_dir, 'RWR_ranks_LOO.tsv')
+    ranks_file = os.path.join(out_dir, 'ranks_LOO.tsv')
     with open(ranks_file, 'w') as f_out:
         f_out.write(f'NODE\tRANK\n')
 
@@ -89,19 +89,19 @@ def main(network, GBA_ranks, out_dir, config_path):
 
         causal_genes_no_left_out = [g for g in causal_genes if g != leftOut]
 
-        seeds_left_out = os.path.join(out_dir, f"seeds_{leftOut}.txt")
+        seeds_left_out = os.path.join(tmp_dir, f"seeds_{leftOut}.txt")
         save_seeds(causal_genes_no_left_out, seeds_left_out)
 
-        config_left_out = os.path.join(out_dir, f"config_{leftOut}.yml")
+        config_left_out = os.path.join(tmp_dir, f"config_{leftOut}.yml")
         save_config(base_config, config_left_out, seeds_left_out)
 
-        multixrank_obj = multixrank.Multixrank(config=config_left_out, wdir=out_dir)
+        multixrank_obj = multixrank.Multixrank(config=config_left_out, wdir=tmp_dir)
         ranking_df = multixrank_obj.random_walk_rank()
 
         ranking_df.sort_values(by='score', ascending=False, inplace=True)
         ranking_df.reset_index(drop=True, inplace=True)
 
-        output_path = os.path.join(out_dir, f"output_{leftOut}")
+        output_path = os.path.join(tmp_dir, f"output_{leftOut}")
         multixrank_obj.write_ranking(ranking_df, path=output_path)
 
         matches = ranking_df.index[ranking_df['node'] == leftOut].tolist()
@@ -110,8 +110,8 @@ def main(network, GBA_ranks, out_dir, config_path):
         with open(ranks_file, 'a') as f_out:
             f_out.write(f"{leftOut}\t{rank}\n")
 
-    logger.info("Done!")
     logger.info(f"Ranks saved to {ranks_file}")
+    logger.info("Done!")
 
 
 if __name__ == '__main__':
@@ -150,5 +150,5 @@ if __name__ == '__main__':
     try:
         main(str(args.network), str(args.GBA_ranks), str(out_dir), str(args.config))
     except Exception as e:
-        sys.stderr.write('ERROR in ' + script_name + ' : ' + repr(e) + '\\n')
+        sys.stderr.write('ERROR in ' + script_name + ' : ' + repr(e) + '\n')
         sys.exit(1)

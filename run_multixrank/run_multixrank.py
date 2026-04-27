@@ -8,24 +8,24 @@ import subprocess
 import multixrank
 
 
-def parse_interactome(interactome_file, tmp_dir):
+def parse_interactome(interactome_file, out_dir):
     """
     remove the second column "pp" from interactome SIF and save to TSV
 
-    awk -v OFS='\t' '{print $1, $3}' interactome_file > tmp_dir/interactome_human.tsv
+    awk -v OFS='\t' '{print $1, $3}' interactome_file > interactome_human.tsv
     """
-    output_file = os.path.join(tmp_dir, "interactome_human.tsv")
+    output_file = os.path.join(out_dir, "interactome_human.tsv")
     awk_command = f"awk -v OFS='\\t' '{{print $1, $3}}' {interactome_file} > {output_file}"
     subprocess.run(awk_command, shell=True, check=True)
 
 
-def parse_seeds(ranks_file, tmp_dir):
+def parse_seeds(ranks_file, out_dir):
     """
-    copy seeds file to tmp_dir with name seeds.txt,
+    copy seeds file to out_dir with name seeds.txt,
     reuse GBA LOO output to create seeds file
     """
-    output_file = os.path.join(tmp_dir, "seeds.txt")
-    os.makedirs(tmp_dir, exist_ok=True)
+    output_file = os.path.join(out_dir, "seeds.txt")
+    os.makedirs(out_dir, exist_ok=True)
 
     with open(ranks_file, 'r') as f_in, open(output_file, 'w') as f_out:
         # skip the header
@@ -39,11 +39,8 @@ def parse_seeds(ranks_file, tmp_dir):
 def main(network, GBA_ranks, out_dir, config_path):
     logger.info("Parsing interactome and seeds for MultiXrank")
 
-    tmp_dir = os.path.join(out_dir, "tmp")
-    os.makedirs(tmp_dir, exist_ok=True)
-
-    parse_interactome(network, tmp_dir)
-    parse_seeds(GBA_ranks, tmp_dir)
+    parse_interactome(network, out_dir)
+    parse_seeds(GBA_ranks, out_dir)
 
     logger.info("Running MultiXrank")
     multixrank_obj = multixrank.Multixrank(config=f"{config_path}", wdir=f"{out_dir}")
@@ -79,7 +76,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # create tmp and output directory if it doesn't exist
+    # create output directory if it doesn't exist
     out_dir = args.out
     os.makedirs(out_dir, exist_ok=True)
 
