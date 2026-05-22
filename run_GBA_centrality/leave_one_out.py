@@ -29,7 +29,7 @@ import GBA_centrality
 import data_parser
 
 
-def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, threads):
+def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH_TO_GBA, threads):
     '''
     arguments:
     - network: list of "edges", an edge is a tuple (source, dest, weight) where
@@ -38,6 +38,7 @@ def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, th
         consecutive ints starting at 0
     - seeds: list of floats of length num_nodes, value=1 if node in seeds and 0 otherwise
     - alpha: attenuation coefficient (parameter set by user)
+    - cacheFile: path to cache file 
     - PATH_TO_GBA: path to GBA centrality
     - threads: number of threads to use, 0 to use all available cores
 
@@ -53,7 +54,7 @@ def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, th
         logger.info("Leaving out %s", node)
         seeds_vector_copy = seeds_vector.copy()
         seeds_vector_copy[node2idx[node]] = 0
-        scores = GBA_centrality.calculate_scores(network, node2idx, seeds_vector_copy, alpha, PATH_TO_GBA, threads)
+        scores = GBA_centrality.calculate_scores(network, node2idx, seeds_vector_copy, alpha, cacheFile, PATH_TO_GBA, threads)
         # save score
         scores_left_out[node] = scores[node2idx[node]]
 
@@ -96,7 +97,7 @@ def ranks_to_TSV(ranks, out_dir):
 
 
 def main(network_file, seeds_file, alpha, weighted, directed,
-         out_dir, PATH_TO_GBA, threads):
+         out_dir, cacheFile, PATH_TO_GBA, threads):
     
     logger.info("Parsing network")
     (network, node2idx, idx2node) = data_parser.parse_network(network_file, weighted, directed)
@@ -105,7 +106,7 @@ def main(network_file, seeds_file, alpha, weighted, directed,
     (seeds, seeds_vector) = data_parser.parse_seeds(seeds_file, node2idx)
 
     logger.info("Calculating leave-one-out ranks")
-    (scores, ranks) = leave_one_out(network, node2idx, seeds, seeds_vector, alpha, PATH_TO_GBA, threads)
+    (scores, ranks) = leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH_TO_GBA, threads)
 
     logger.info(f"Saving leave-one-out scores to {out_dir}")
     scores_to_TSV(scores, out_dir)
@@ -149,6 +150,10 @@ if __name__ == "__main__":
     parser.add_argument('--directed',
                         help='use if graph is directed',
                         action='store_true')
+    parser.add_argument('--cacheFile',
+                        help='cache file to build (on first run) and use (on subsequent runs)',
+                        type=pathlib.Path,
+                        default=None)
     parser.add_argument('--out',
                         help='output directory to save LOO scores and ranks files',
                         type=pathlib.Path,
@@ -175,7 +180,7 @@ if __name__ == "__main__":
 
     try:
         main(args.network, args.seeds, args.alpha, args.weighted,
-             args.directed, args.out, PATH_TO_GBA, args.threads)
+             args.directed, args.out, args.cacheFile, PATH_TO_GBA, args.threads)
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
         sys.stderr.write("ERROR in " + script_name + " : " + repr(e) + "\n")
