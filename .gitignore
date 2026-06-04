@@ -16,4 +16,6 @@ netcore-input/
 netcore-output/
 netcore-README
 
-validation.ipynb
+stats/
+network_stats.py
+seeds_stats.py
