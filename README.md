@@ -1,34 +1,14 @@
 # GBA-centrality-validation
 
-This repository contains scripts for the validation of **[GBA centrality](https://github.com/jedrzejkubica/GBA-centrality)** as described in the submitted manuscript. We performed a leave-one-out (LOO) cross-validation and a tissue enrichment validation to compare the performance of GBA centrality and Random Walk with Restart (as implemented in MutliXrank[^1]).
+This repository contains scripts for the validation of **[GBA centrality](https://github.com/jedrzejkubica/GBA-centrality)** as described in the submitted manuscript. We performed leave-one-out cross-validation (LOO CV) and tissue enrichment validation to compare the performance of GBA centrality with Random Walk with Restart (as implemented in MultiXrank[^1]) and NetCore[^2].
 
 
-## Python environment
+## Step 1. Run LOO CV for GBA centrality
 
-Install MultiXrank and Python packages for the analyses.
-
-```
-python -m venv --system-site-packages ~/pyenvs/pyEnv_GBA-centrality
-source ~/pyenvs/pyEnv_GBA-centrality/bin/activate
-pip install --upgrade pip
-pip install numpy networkx matplotlib scipy
-pip install multixrank
-```
-
-
-## Part 1. Leave-one-out cross-validation
-
-We created custom scripts (`run_GBA_centrality/leave_one_out.py` and `run_MultiXrank/run_leave_one_out.py`) for leave-one-out validation.
-
-
-### Run GBA centrality
-
-We assume that GBA-centrality is installed as described in [GBA centrality](https://github.com/jedrzejkubica/GBA-centrality) and that input data (interactome, uniprot, known causal genes) is prepared as described in [GBA centrality Interactome](https://github.com/jedrzejkubica/GBA-centrality/tree/main/Interactome).
-
-Run [leave_one_out.py](run_GBA_centrality/leave_one_out.py) to calculate scores and ranks for known causal genes as if they were not known to be associated with the disease:
+We assume that GBA-centrality is installed as described in [GBA centrality](https://github.com/jedrzejkubica/GBA-centrality) and that input data (interactome, causal genes/proteins) is prepared in `~/GBA-input/` as described in [GBA centrality Interactome](https://github.com/jedrzejkubica/GBA-centrality/tree/main/Interactome). Scores (`scores_LOO.tsv`) and ranks (`ranks_LOO.tsv`) for left-out genes will be saved in `~/GBA-output/`. Logs are written to `log_LOO.txt`.
 
 ```
-python leave_one_out.py \
+python run_GBA_centrality/leave_one_out.py \
     --network ~/GBA-input/interactome_human.sif \
     --seeds ~/GBA-input/causal_proteins.txt \
     --scores ~/GBA-output/scores_LOO.tsv \
@@ -37,75 +17,124 @@ python leave_one_out.py \
 ```
 
 
-### Run MultiXrank
+### Step 2. Run LOO CV for MultiXrank
 
-We will be using MMAF as an example. If needed, adapt the command below for another phenotype:
-```
-PHENO="MMAF"
-```
+Create a Python environment and install MultiXrank as described in [https://github.com/anthbapt/multixrank](https://github.com/anthbapt/multixrank). 
 
-Prepare input data as follows:
+The interactome SIF file from GBA centrality will be automatically converted to a TSV file (with two columns: node1, node2) as required by MultiXrank. A default config file is provided at [run_multixrank/default/config.yml](run_multixrank/default/config.yml). All output files will be saved in `~/multixrank-output/`.
 
 ```
-cd run_MultiXrank
-mkdir $PHENO
-cp default/config.yml $PHENO/.
+mkdir ~/multixrank-output/
 ```
 
-Create an interactome TSV file (with 2 columns: protein1 protein2) using the interactome file with which GBA centrality was run:
+First, the MultiXrank scoring script takes the interactome SIF file and GBA centrality-derived left-out genes' ranks as input and produces a file with scores for all genes in the network `multiplex_1.tsv` in `~/multixrank-output/`.
 
 ```
-mkdir -p $PHENO/multiplex/1
-cp ~/GBA-input/interactome_human.sif $PHENO/multiplex/1/.
-awk -v OFS='\t' '{print $1, $3}' $PHENO/multiplex/1/interactome_human.sif > $PHENO/multiplex/1/interactome_human.tsv
+python run_multixrank/run_multixrank.py \
+    --network ~/GBA-input/interactome_human.sif \
+    --GBA_ranks ~/GBA-output/ranks_LOO.tsv \
+    --config run_multixrank/default/config.yml \
+    --out ~/multixrank-output/
 ```
 
-Create a file with seeds (i.e. known disease causal genes). The most convenient way is to use the output file from leave-one-out of GBA centrality:
-```
-ln -s ~/GBA-output/ranks_LOO.tsv $PHENO/.
-awk '{print $1}' $PHENO/ranks_LOO.tsv > $PHENO/seeds.txt
-sed -i '1d' $PHENO/seeds.txt
-```
-
-Modify paths to interactome and seeds as needed in `$PHENO/config.yml`.
-
-Run MultiXrank as follows:
+Then, the leave-one-out script takes the same input files as the previous step. A temporary directory is created for intermediate files, with one subdirectory for each left-out gene.
 
 ```
-python run_multixrank.py --pheno MMAF
+python run_multixrank/run_leave_one_out.py \
+    --network ~/GBA-input/interactome_human.sif \
+    --GBA_ranks ~/GBA-output/ranks_LOO.tsv \
+    --config run_multixrank/default/config.yml \
+    --out ~/multixrank-output/
 ```
 
-The next script [run_leave_one_out.py](run_MultiXrank/run_leave_one_out.py) creates two files for each left-out gene: config_ENSGleftout.yml and seeds_ENSGleftout.txt, then it runs MultiXrank for each left-out gene and saves its rank to RWR_ranks_LOO.tsv.
+
+### Step 3. Run LOO CV for NetCore
+
+Create a Python environment and install NetCore in `run_netcore/` following instructions at [https://github.molgen.mpg.de/barel/NetCore](https://github.molgen.mpg.de/barel/NetCore).
+
+The interactome TSV file created for MultiXrank is reused here. All output files will be saved in `~/netcore-output/`.
+
 ```
-python run_leave_one_out.py --pheno $PHENO
+mkdir ~/netcore-output/
+```
+
+First, NetCore requires running edge permutations on the interactome. This script takes the interactome TSV file and produces a subdirectory `permutations/` in `~/netcore-output/`. Logs are written to `log_permut.txt`.
+
+```
+python run_netcore/run_permutations.py \
+        --interactome ~/multixrank-output/interactome_human.tsv \
+        --output-path ~/netcore-output/permutations/ \
+        2> ~/netcore-output/log_permut.txt
+```
+
+Then, run the NetCore scoring script with an interactome TSV file and the seeds file (as in GBA centrality). It writes scores for all genes in the network to `random_walk_weights.txt` in `~/netcore-output/`. Both stdout and stderr are captured in `log.txt`.
+
+```
+python run_netcore/NetCore/netcore/netcore.py \
+        -e ~/multixrank-output/interactome_human.tsv \
+        -s ~/GBA-input/causal_proteins.txt \
+        -pd ~/netcore-output/permutations/interactome_human_edge_permutations/ \
+        -o ~/netcore-output/ \
+        1> ~/netcore-output/log.txt \
+        2>&1
+```
+
+Then, run the leave-one-out bash script, which iterates over left-out genes and re-runs NetCore scoring. It takes the interactome TSV file, the temporary files produced by MultiXrank (in `~/multixrank-output/tmp/`) and the permutations subdirectory as input. One subdirectory is created for each left-out gene in `~/netcore-output/`, each containing `random_walk_weights.txt` with scores for all genes in the network.
+
+```
+run_netcore/run_leave_one_out.sh \
+    ~/multixrank-output/interactome_human.tsv \
+    ~/multixrank-output/tmp/ \
+    ~/netcore-output/permutations/interactome_human_edge_permutations/ \
+    ~/netcore-output/
+```
+
+The script follows this usage:
+
+```
+./run_leave_one_out.sh <interactome> <seeds_dir> <permutation_dir> <out_dir>
 ```
 
 
 ### Part 2. Perform the analyses
 
-Use [validation.ipynb](validation.ipynb) to parse the results and perform the following analyses:
-- compare the ratio of predicted causal genes enriched in the tissue of interest with the ratio of all genes enriched in that tissue
+This part covers three analyses to compare GBA centrality, MultiXrank and NetCore.
+
+[validation_CDF.py](validation_CDF.py) calculates and plots the cumulative distribution functions (CDFs) of left-out genes ranks. CDF curves show the proportion of left-out genes recovered at or above rank x, for every rank x. The area under the curve (AUC) is calculated and shown in the legend.
+
+```
+python validation_CDF.py --help
+```
+
+[validation_TE.py](validation_TE.py) compares the ratio of "predicted causal genes" enriched in the tissue of interest with the ratio of all genes. It checks whether the highest-scoring genes are more enriched in the tissue than would be expected by chance.
 
 > [!NOTE]
 > For the tissue enrichment validation we downloaded the Expression Atlas from Ensembl reference (v104):
 > https://www.ebi.ac.uk/gxa/experiments-content/E-MTAB-5214/resources/ExperimentDownloadSupplier.RnaSeqBaseline/tpms.tsv
-> then we added manually a column (after the "ENSG" column) called "tissue_enrichment", which corresonds to the tissue enrichment of each gene
-> (i.e. we divide tissue expression of each gene by the average expression of that gene in all tissues).
+> then we manually added a column (after the "ENSG" column) called "tissue_enrichment", which corresponds to the tissue enrichment of each gene
+> (i.e. tissue expression of each gene divided by the average expression of that gene in all tissues).
 
-- compare empirical CDFs (cumulative distributions) for ranks of left-out genes from GBA centrality and RWR
+```
+python validation_TE.py --help
+```
 
-WIP: The notebook [validation_parameters.ipynb](validation_parameters.ipynb) can be used to investigate the choice of the parameters on the methods' performance.
+[validation_ranksVsDeg.py](validation_ranksVsDeg.py) examines the relationship between the degrees of the left-out genes and the differences in their ranks between GBA centrality and MultiXrank, and between GBA centrality and NetCore.
+
+```
+python validation_ranksVsDeg.py --help
+```
 
 
 ### Dependencies
 
 For validation we used Python 3.9 with the following libraries:
-- numpy==1.23.5
-- networkx==3.2.1
-- matplotlib==3.4.3
-- scipy==1.9.3
+- numpy 1.23
+- networkx 3.2
+- matplotlib 3.4
+- scipy 1.9
 
 
 ### References
 
 [^1]: Baptista, A., Gonzalez, A., & Baudot, A. (2022). Universal multilayer network exploration by random walk with restart. Communications Physics, 5(1), 1–9. https://doi.org/10.1038/s42005-022-00937-9
+[^2]: Gal Barel, Ralf Herwig, NetCore: a network propagation approach using node coreness, Nucleic Acids Research, Volume 48, Issue 17, 25 September 2020, Page e98, https://doi.org/10.1093/nar/gkaa639
