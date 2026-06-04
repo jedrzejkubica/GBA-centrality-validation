@@ -75,10 +75,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog=script_name,
         description="""
-        TODO: add description
+        Concatenate multiple figures into one, with labels (a), (b), ... for each figure.
+        The figures will be arranged in 2 rows, and as many columns as needed.
         """)
-    parser.add_argument('--figures', nargs='+', type=pathlib.Path, required=True)
-    parser.add_argument('--out', type=pathlib.Path, default="fig_all.png")
+    parser.add_argument('--figures',
+                        help="Paths (one after the other) to the figures to concatenate, in the order they should appear in the output figure",
+                        nargs='+',
+                        type=pathlib.Path,
+                        required=True)
+    parser.add_argument('--out',
+                        help="Path to the output figure",
+                        type=pathlib.Path,
+                        default="fig_all.png")
 
     args = parser.parse_args()
 

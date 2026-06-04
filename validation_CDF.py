@@ -223,15 +223,35 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog=script_name,
         description="""
-        TODO: add description
+        Validation of GBA centrality ranks by plotting the cumulative distribution function (CDF) of left-out genes ranks.
+        The CDF curve shows the number of left-out genes with rank <= x for each rank x.
+        The area under the curve (AUC) is also calculated and shown in the legend.
         """)
-    parser.add_argument('--network', required=True)
-    parser.add_argument('--GBA_ranks', required=True)
-    parser.add_argument('--multixrank_ranks', required=False, default=None)
-    parser.add_argument('--netcore_ranks', required=False, default=None)
-    parser.add_argument('--cdf', type=pathlib.Path, required=False, default="CDF.png")
-    parser.add_argument('--weighted', action='store_true', required=False)
-    parser.add_argument('--directed', action='store_true', required=False)
+    parser.add_argument('--network',
+                        help="Path to the network SIF file",
+                        required=True)
+    parser.add_argument('--GBA_ranks',
+                        help="Path to the GBA ranks file (TSV with header, columns: NODE, RANK)",
+                        required=True)
+    parser.add_argument('--multixrank_ranks',
+                        help="Path to the MultiXrank ranks file (TSV with header, columns: NODE, RANK)",
+                        required=False, default=None)
+    parser.add_argument('--netcore_ranks',
+                        help="Path to the NetCore ranks file (TSV with header, columns: NODE, RANK)",
+                        required=False, default=None)
+    parser.add_argument('--cdf',
+                        help="Path to the output figure for the CDF curve (default: CDF.png)",
+                        type=pathlib.Path,
+                        required=False,
+                        default="CDF.png")
+    parser.add_argument('--weighted',
+                        help="Whether the network is weighted (default: False)",
+                        action='store_true',
+                        required=False)
+    parser.add_argument('--directed',
+                        help="Whether the network is directed (default: False)",
+                        action='store_true',
+                        required=False)
 
     args = parser.parse_args()
 
