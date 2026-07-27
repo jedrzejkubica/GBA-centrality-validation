@@ -3,31 +3,30 @@
 This repository contains scripts for the validation of **[GBA centrality](https://github.com/jedrzejkubica/GBA-centrality)** as described in the submitted manuscript. We performed leave-one-out cross-validation (LOO CV) and tissue enrichment validation to compare the performance of GBA centrality with Random Walk with Restart (as implemented in MultiXrank[^1]) and NetCore[^2].
 
 
-## Step 1. Run LOO CV for GBA centrality
+### Step 1. Run LOO CV for GBA centrality
 
-We assume that GBA-centrality is installed as described in [GBA centrality](https://github.com/jedrzejkubica/GBA-centrality) and that input data (interactome, causal genes/proteins) is prepared in `~/GBA-input/` as described in [GBA centrality Interactome](https://github.com/jedrzejkubica/GBA-centrality/tree/main/Interactome). Scores (`scores_LOO.tsv`) and ranks (`ranks_LOO.tsv`) for left-out genes will be saved in `~/GBA-output/`. Logs are written to `log_LOO.txt`.
+We assume that GBA-centrality is installed as described in [GBA centrality](https://github.com/jedrzejkubica/GBA-centrality) and that input data (interactome, seeds) is prepared in `~/GBA-input/` as described in [GBA centrality Interactome](https://github.com/jedrzejkubica/GBA-centrality/tree/main/Interactome). Scores (`scores_LOO.tsv`) and ranks (`ranks_LOO.tsv`) for left-out genes will be saved in `~/GBA-output/` (`--out`). Logs are written to `log_LOO.txt`.
 
 ```
 python run_GBA_centrality/leave_one_out.py \
     --network ~/GBA-input/interactome_human.sif \
     --seeds ~/GBA-input/causal_proteins.txt \
-    --scores ~/GBA-output/scores_LOO.tsv \
-    --ranks ~/GBA-output/ranks_LOO.tsv \
+    --out ~/GBA-output/ \
     2> ~/GBA-output/log_LOO.txt
 ```
 
 
 ### Step 2. Run LOO CV for MultiXrank
 
-Create a Python environment and install MultiXrank as described in [https://github.com/anthbapt/multixrank](https://github.com/anthbapt/multixrank). 
+Create a Python environment and install MultiXrank as described in [https://github.com/anthbapt/multixrank](https://github.com/anthbapt/multixrank).
 
-The interactome SIF file from GBA centrality will be automatically converted to a TSV file (with two columns: node1, node2) as required by MultiXrank. A default config file is provided at [run_multixrank/default/config.yml](run_multixrank/default/config.yml). All output files will be saved in `~/multixrank-output/`.
+A default config file is provided at [run_multixrank/default/config.yml](run_multixrank/default/config.yml). All output files will be saved in `~/multixrank-output/`.
 
 ```
 mkdir ~/multixrank-output/
 ```
 
-First, the MultiXrank scoring script takes the interactome SIF file and GBA centrality-derived left-out genes' ranks as input and produces a file with scores for all genes in the network `multiplex_1.tsv` in `~/multixrank-output/`.
+The MultiXrank scoring script takes the interactome SIF file and GBA centrality-derived left-out genes' ranks as input. The interactome SIF file from GBA centrality will be automatically converted to a TSV file (with two columns: node1, node2) as required by MultiXrank. The scoring script produces a file with scores for all genes in the network `multiplex_1.tsv` in `~/multixrank-output/`.
 
 ```
 python run_multixrank/run_multixrank.py \
@@ -37,7 +36,7 @@ python run_multixrank/run_multixrank.py \
     --out ~/multixrank-output/
 ```
 
-Then, the leave-one-out script takes the same input files as the previous step. A temporary directory is created for intermediate files, with one subdirectory for each left-out gene.
+Then, the leave-one-out script takes the same input files as the previous step. One subdirectory for each left-out gene is created for intermediate directories and files.
 
 ```
 python run_multixrank/run_leave_one_out.py \
@@ -50,15 +49,15 @@ python run_multixrank/run_leave_one_out.py \
 
 ### Step 3. Run LOO CV for NetCore
 
-Create a Python environment and install NetCore in `run_netcore/` following instructions at [https://github.molgen.mpg.de/barel/NetCore](https://github.molgen.mpg.de/barel/NetCore).
+Create a Python environment and install NetCore in `run_netcore/` following instructions at [https://github.molgen.mpg.de/barel/NetCore](https://github.molgen.mpg.de/barel/NetCore) (note that NetCore requires Python 3.7).
 
-The interactome TSV file created for MultiXrank is reused here. All output files will be saved in `~/netcore-output/`.
+The interactome TSV file created for MultiXrank will be reused. All output files will be saved in `~/netcore-output/`.
 
 ```
 mkdir ~/netcore-output/
 ```
 
-First, NetCore requires running edge permutations on the interactome. This script takes the interactome TSV file and produces a subdirectory `permutations/` in `~/netcore-output/`. Logs are written to `log_permut.txt`.
+First, NetCore requires running edge permutations on the interactome. This script takes the interactome TSV file and produces a subdirectory `permutations/` in `~/netcore-output/`, required as input in the next step. Logs are written to `log_permut.txt`.
 
 ```
 python run_netcore/run_permutations.py \
@@ -67,7 +66,7 @@ python run_netcore/run_permutations.py \
         2> ~/netcore-output/log_permut.txt
 ```
 
-Then, run the NetCore scoring script with an interactome TSV file and the seeds file (as in GBA centrality). It writes scores for all genes in the network to `random_walk_weights.txt` in `~/netcore-output/`. Both stdout and stderr are captured in `log.txt`.
+Then, run the NetCore scoring script with an interactome TSV file (`-e`),the seeds file (`-c`), the permutations directory (`-pd`). It writes scores for all genes in the network to `random_walk_weights.txt` in `~/netcore-output/` (`-o`). Both stdout and stderr are captured in `log.txt`.
 
 ```
 python run_netcore/NetCore/netcore/netcore.py \
@@ -79,7 +78,13 @@ python run_netcore/NetCore/netcore/netcore.py \
         2>&1
 ```
 
-Then, run the leave-one-out bash script, which iterates over left-out genes and re-runs NetCore scoring. It takes the interactome TSV file, the temporary files produced by MultiXrank (in `~/multixrank-output/tmp/`) and the permutations subdirectory as input. One subdirectory is created for each left-out gene in `~/netcore-output/`, each containing `random_walk_weights.txt` with scores for all genes in the network.
+Then, run the leave-one-out bash script, which iterates over left-out genes and re-runs NetCore. The script follows this usage:
+
+```
+./run_leave_one_out.sh <interactome> <seeds_dir> <permutation_dir> <out_dir>
+```
+
+It takes the following arguments (in this order): interactome TSV file, the temporary files produced by MultiXrank (in `~/multixrank-output/tmp/`) and the permutations subdirectory, the output directory. One subdirectory is created for each left-out gene in `~/netcore-output/`, each containing `random_walk_weights.txt` with scores for all genes in the network, for example:
 
 ```
 run_netcore/run_leave_one_out.sh \
@@ -89,18 +94,12 @@ run_netcore/run_leave_one_out.sh \
     ~/netcore-output/
 ```
 
-The script follows this usage:
-
-```
-./run_leave_one_out.sh <interactome> <seeds_dir> <permutation_dir> <out_dir>
-```
-
 
 ### Part 2. Perform the analyses
 
 This part covers three analyses to compare GBA centrality, MultiXrank and NetCore.
 
-[validation_CDF.py](validation_CDF.py) calculates and plots the cumulative distribution functions (CDFs) of left-out genes ranks. CDF curves show the proportion of left-out genes recovered at or above rank x, for every rank x. The area under the curve (AUC) is calculated and shown in the legend.
+[validation_CDF.py](validation_CDF.py) calculates and plots a cumulative distribution function (CDF) for left-out ranks. CDF curves show the proportion of left-out nodes recovered at or above rank x, for every rank x. The area under the curve (AUC) is calculated and shown in the legend.
 
 ```
 python validation_CDF.py --help
