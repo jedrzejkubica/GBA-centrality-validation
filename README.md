@@ -105,7 +105,7 @@ This part covers three analyses to compare GBA centrality, MultiXrank and NetCor
 python validation_CDF.py --help
 ```
 
-[validation_TE.py](validation_TE.py) compares the ratio of "predicted causal genes" enriched in the tissue of interest with the ratio of all genes. It checks whether the highest-scoring genes are more enriched in the tissue than would be expected by chance.
+[validation_TE.py](validation_TE.py) compares the ratio of the highest-scoring genes enriched in the tissue of interest with the ratio of all genes. It checks whether the highest-scoring genes are more enriched in the tissue than would be expected by chance.
 
 > [!NOTE]
 > For the tissue enrichment validation we downloaded the Expression Atlas from Ensembl reference (v104):
@@ -130,7 +130,7 @@ For validation we used Python 3.9 with the following libraries:
 - numpy 1.23
 - networkx 3.2
 - matplotlib 3.4
-- scipy 1.9
+- scipy 1.13
 
 
 ### References
