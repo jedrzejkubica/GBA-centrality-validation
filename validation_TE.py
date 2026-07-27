@@ -32,6 +32,8 @@ import data_parser
 # set up logger, using inherited config, in case we get called as a module
 logger = logging.getLogger(__name__)
 
+matplotlib.pyplot.set_loglevel('warning')
+
 
 def parse_uniprot(uniprot_file):
     """
