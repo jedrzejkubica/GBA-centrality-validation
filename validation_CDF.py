@@ -65,6 +65,57 @@ def parse_ranks(ranks_file):
     return(node2rank)
 
 
+def netcore_scores_to_ranks(left_out, netcore_LOO_dir, n_nodes):
+    """
+    Iterates over the list of left-out nodes,
+    for each left-out node opens a leave-one-out file (with nodes sorted by descending score,
+    so the first node has rank=1, the second node has rank=2, etc),
+    finds the rank of the left-out node;
+    for left-out nodes for which scores are missing (not in the main network component), we assign scores=0.
+
+    arguments:
+    - left_out: list of left-out nodes
+    - netcore_LOO_dir: directory with NetCore scores files for left-out nodes,
+        eg. for each left-out node scores for all nodes in the interactome are in:
+        netcore-output/{PHENOTYPE}/output_{LEFT-OUT-NODE}/random_walk_weights.txt
+    - n_nodes: total number of nodes in the network
+    
+    returns:
+    - node2rank: dict with key=left-out node, value=rank
+    """
+    node2rank = {}
+
+    for left_out_node in left_out:
+        netcore_LOO_file = os.path.join(netcore_LOO_dir, f"output_{left_out_node}", "random_walk_weights.txt")
+        if not os.path.isfile(netcore_LOO_file):
+            raise Exception(f"NetCore scores file not found for left-out node {left_out_node}: {netcore_LOO_file}")
+
+        with open(netcore_LOO_file, 'r') as f:
+            header = f.readline()
+            if not header.startswith("node_index\t"):
+                raise Exception(f"NetCore scores file problem for left-out node {left_out_node}, wrong format: {netcore_LOO_file}")
+
+            rank = 1
+            found = False
+            for line in f:
+                split_line = line.rstrip().split("\t")
+                if len(split_line) != 4:
+                    raise Exception(f"Invalid line in NetCore scores file for left-out node {left_out_node}: {line}")
+
+                (idx, node, score, pvalue) = split_line
+                if node == left_out_node:
+                    node2rank[left_out_node] = rank
+                    found = True
+                    break
+                rank += 1
+
+            if not found:
+                # If the left-out node is not found in the NetCore scores file, assign score=0 (rank==n_nodes)
+                node2rank[left_out_node] = n_nodes
+
+    return(node2rank)
+
+
 def generate_random_ranks(n_left_out, network_size):
     """
     Generate ranks with a random classifier
@@ -148,7 +199,7 @@ def plot_CDF(GBA_curve, GBA_AUC, random_curve, network_size, out="CDF.png",
     logger.info(f"CDF curve saved to {out}")
 
 
-def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_ranks_file=None,
+def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_LOO_dir=None,
          cdf_path=None, weighted=False, directed=False):
     
     logger.info("Parsing network")
@@ -171,12 +222,12 @@ def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_ranks
     if multixrank_ranks_file:
         logger.info("Parsing MultiXrank ranks")
         multixrank_node2rank = parse_ranks(multixrank_ranks_file)
-        assert len(GBA_node2rank) == len(multixrank_node2rank), "GBA and MultiXrank ranks files have different number of left-out genes"
-    if netcore_ranks_file:
-        logger.info("Parsing NetCore ranks")
-        netcore_node2rank = parse_ranks(netcore_ranks_file)
-        assert len(GBA_node2rank) == len(netcore_node2rank), "GBA and NetCore ranks files have different number of left-out genes"
-    logger.info(f"Found {len(GBA_node2rank)} left-out genes")
+        assert len(GBA_node2rank) == len(multixrank_node2rank), "GBA and MultiXrank ranks files have different number of left-out nodes"
+    if netcore_LOO_dir:
+        logger.info("Parsing NetCore scores")
+        netcore_node2rank = netcore_scores_to_ranks(GBA_node2rank.keys(), netcore_LOO_dir, len(node2idx))
+        assert len(GBA_node2rank) == len(netcore_node2rank), "GBA and NetCore ranks files have different number of left-out nodes"
+    logger.info(f"Found {len(GBA_node2rank)} left-out nodes")
 
     # calculate the mean and median degree of the left-out genes (seeds)
     seeds_degrees = []
@@ -194,7 +245,7 @@ def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_ranks
         logger.info(f"AUC: {multixrank_AUC:.3f} (MultiXrank)")
         optional_kwargs.update({'multixrank_curve': multixrank_curve, 'multixrank_AUC': multixrank_AUC})
 
-    if netcore_ranks_file is not None:
+    if netcore_LOO_dir is not None:
         (netcore_curve, netcore_AUC) = ranks_to_curve(netcore_node2rank.values(), len(node2idx))
         logger.info(f"AUC: {netcore_AUC:.3f} (NetCore)")
         optional_kwargs.update({'netcore_curve': netcore_curve, 'netcore_AUC': netcore_AUC})
@@ -236,8 +287,10 @@ if __name__ == "__main__":
     parser.add_argument('--multixrank_ranks',
                         help="Path to the MultiXrank ranks file (TSV with header, columns: NODE, RANK)",
                         required=False, default=None)
-    parser.add_argument('--netcore_ranks',
-                        help="Path to the NetCore ranks file (TSV with header, columns: NODE, RANK)",
+    parser.add_argument('--netcore_LOO_dir',
+                        help="Path to the directory with NetCore scores files for left-out nodes, " \
+                        "eg. for each left-out node scores for all nodes in the interactome are in: " \
+                        "netcore-output/{PHENOTYPE}/output_{LEFT-OUT-NODE}/random_walk_weights.txt",
                         required=False, default=None)
     parser.add_argument('--cdf',
                         help="Path to the output figure for the CDF curve (default: CDF.png)",
@@ -258,7 +311,7 @@ if __name__ == "__main__":
     try:
         main(args.network, args.GBA_ranks,
              multixrank_ranks_file=args.multixrank_ranks,
-             netcore_ranks_file=args.netcore_ranks,
+             netcore_LOO_dir=args.netcore_LOO_dir,
              cdf_path=args.cdf,
              weighted=args.weighted,
              directed=args.directed)
