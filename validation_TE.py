@@ -331,6 +331,10 @@ def main(network_file, uniprot_file, gtex_file, GBA_scores_file,
          highest_scoring_threshold=10.0, enrichement_threshold=10.0,
          weighted=False, directed=False):
 
+    if not (multixrank_scores_file or netcore_scores_file):
+        logger.warning("Provide MultiXrank and/or NetCore scores files")
+        raise Exception("No MultiXrank and/or NetCore scores files provided")
+
     logger.info("Parsing network")
     (edge_list, node2idx, idx2node) = data_parser.parse_network(network_file, weighted, directed)
 
@@ -370,10 +374,6 @@ def main(network_file, uniprot_file, gtex_file, GBA_scores_file,
     GBA_comparison_row = comparison_matrix_row("GBA centrality", GBA_highest_scoring, tissue_enriched, non_tissue_enriched, GBA_pvalue)
     comparison_matrix.append(GBA_comparison_row)
     row_labels.append("GBA centrality")
-
-    if not (multixrank_scores_file or netcore_scores_file):
-        logger.warning("Provide MultiXrank and/or NetCore scores files")
-        raise Exception("No MultiXrank and/or NetCore scores files provided")
 
     if multixrank_scores_file:
         logger.info("Parsing MultiXrank scores")
@@ -418,7 +418,7 @@ def main(network_file, uniprot_file, gtex_file, GBA_scores_file,
     table.scale(1,2)
 
     comparison_matrix_path.parent.mkdir(parents=True, exist_ok=True)  # Path.parent of a bare filename returns Path("."), and mkdir on "."
-    matplotlib.pyplot.savefig(comparison_matrix_path, dpi=1000, bbox_inches='tight')
+    matplotlib.pyplot.savefig(comparison_matrix_path, dpi=500, bbox_inches='tight')
 
 
 if __name__ == "__main__":
@@ -438,6 +438,7 @@ if __name__ == "__main__":
         """)
     parser.add_argument('--network',
                         help="Path to the network SIF file",
+                        type=pathlib.Path,
                         required=True)
     parser.add_argument('--uniprot',
                         help="Path to the UniProt file created with uniprot_parser.py, with columns: " \
@@ -451,13 +452,18 @@ if __name__ == "__main__":
                         required=True)
     parser.add_argument('--GBA_scores',
                         help="Path to the GBA scores file (TSV with header, columns: NODE, SCORE)",
+                        type=pathlib.Path,
                         required=True)
     parser.add_argument('--multixrank_scores',
                         help="Path to the MultiXrank scores file (TSV with header, columns: multiplex, node, score)",
-                        required=False, default=None)
+                        type=pathlib.Path,
+                        required=False,
+                        default=None)
     parser.add_argument('--netcore_scores',
                         help="Path to the NetCore scores file (TSV with header, columns: node_index, node, prop_weight, pvalue)",
-                        required=False, default=None)
+                        type=pathlib.Path,
+                        required=False,
+                        default=None)
     parser.add_argument('--matrix',
                         help="Path to the output figure for the comparison matrix (default: comparison_matrix.png)",
                         type=pathlib.Path,
