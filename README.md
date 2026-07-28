@@ -1,18 +1,18 @@
-# GBA-centrality-validation
+# BFWalk-validation
 
-This repository contains scripts for the validation of **[GBA centrality](https://github.com/jedrzejkubica/GBA-centrality)** as described in the submitted manuscript. We performed leave-one-out cross-validation (LOO CV) and tissue enrichment validation to compare the performance of GBA centrality with Random Walk with Restart (as implemented in MultiXrank[^1]) and NetCore[^2].
+This repository contains scripts for the validation of **[BFWalk](https://github.com/jedrzejkubica/BFWalk)** as described in the submitted manuscript. We performed leave-one-out cross-validation (LOO CV) and tissue enrichment validation to compare the performance of BFWalk with Random Walk with Restart (as implemented in MultiXrank[^1]) and NetCore[^2].
 
 
-### Step 1. Run LOO CV for GBA centrality
+### Step 1. Run LOO CV for BFWalk
 
-We assume that GBA-centrality is installed as described in [GBA centrality](https://github.com/jedrzejkubica/GBA-centrality) and that input data (interactome, seeds) is prepared in `~/GBA-input/` as described in [GBA centrality Interactome](https://github.com/jedrzejkubica/GBA-centrality/tree/main/Interactome). Scores (`scores_LOO.tsv`) and ranks (`ranks_LOO.tsv`) for left-out genes will be saved in `~/GBA-output/` (`--out`). Logs are written to `log_LOO.txt`.
+We assume that BFWalk is installed as described in [BFWalk](https://github.com/jedrzejkubica/BFWalk) and that input data (interactome, seeds) is prepared in `~/BFWalk-input/` as described in [BFWalk Interactome](https://github.com/jedrzejkubica/BFWalk/tree/main/Interactome). Scores (`scores_LOO.tsv`) and ranks (`ranks_LOO.tsv`) for left-out genes will be saved in `~/BFWalk-output/` (`--out`). Logs are written to `log_LOO.txt`.
 
 ```
-python run_GBA_centrality/leave_one_out.py \
-    --network ~/GBA-input/interactome_human.sif \
-    --seeds ~/GBA-input/causal_proteins.txt \
-    --out ~/GBA-output/ \
-    2> ~/GBA-output/log_LOO.txt
+python run_BFWalk/leave_one_out.py \
+    --network ~/BFWalk-input/interactome_human.sif \
+    --seeds ~/BFWalk-input/causal_proteins.txt \
+    --out ~/BFWalk-output/ \
+    2> ~/BFWalk-output/log_LOO.txt
 ```
 
 
@@ -26,12 +26,12 @@ A default config file is provided at [run_multixrank/default/config.yml](run_mul
 mkdir ~/multixrank-output/
 ```
 
-The MultiXrank scoring script takes the interactome SIF file and GBA centrality-derived left-out genes' ranks as input. The interactome SIF file from GBA centrality will be automatically converted to a TSV file (with two columns: node1, node2) as required by MultiXrank. The scoring script produces a file with scores for all genes in the network `multiplex_1.tsv` in `~/multixrank-output/`.
+The MultiXrank scoring script takes the interactome SIF file and BFWalk-derived left-out genes' ranks as input. The interactome SIF file from BFWalk will be automatically converted to a TSV file (with two columns: node1, node2) as required by MultiXrank. The scoring script produces a file with scores for all genes in the network `multiplex_1.tsv` in `~/multixrank-output/`.
 
 ```
 python run_multixrank/run_multixrank.py \
-    --network ~/GBA-input/interactome_human.sif \
-    --GBA_ranks ~/GBA-output/ranks_LOO.tsv \
+    --network ~/BFWalk-input/interactome_human.sif \
+    --BFWalk_ranks ~/BFWalk-output/ranks_LOO.tsv \
     --config run_multixrank/default/config.yml \
     --out ~/multixrank-output/
 ```
@@ -40,8 +40,8 @@ Then, the leave-one-out script takes the same input files as the previous step. 
 
 ```
 python run_multixrank/run_leave_one_out.py \
-    --network ~/GBA-input/interactome_human.sif \
-    --GBA_ranks ~/GBA-output/ranks_LOO.tsv \
+    --network ~/BFWalk-input/interactome_human.sif \
+    --BFWalk_ranks ~/BFWalk-output/ranks_LOO.tsv \
     --config run_multixrank/default/config.yml \
     --out ~/multixrank-output/
 ```
@@ -71,7 +71,7 @@ Then, run the NetCore scoring script with an interactome TSV file (`-e`),the see
 ```
 python run_netcore/NetCore/netcore/netcore.py \
         -e ~/multixrank-output/interactome_human.tsv \
-        -s ~/GBA-input/causal_proteins.txt \
+        -s ~/BFWalk-input/causal_proteins.txt \
         -pd ~/netcore-output/permutations/interactome_human_edge_permutations/ \
         -o ~/netcore-output/ \
         1> ~/netcore-output/log.txt \
@@ -97,7 +97,7 @@ run_netcore/run_leave_one_out.sh \
 
 ### Part 2. Perform the analyses
 
-This part covers three analyses to compare GBA centrality, MultiXrank and NetCore.
+This part covers three analyses to compare BFWalk, MultiXrank and NetCore.
 
 [validation_CDF.py](validation_CDF.py) calculates and plots a cumulative distribution function (CDF) for left-out ranks. CDF curves show the proportion of left-out nodes recovered at or above rank x, for every rank x. The area under the curve (AUC) is calculated and shown in the legend.
 
@@ -117,7 +117,7 @@ python validation_CDF.py --help
 python validation_TE.py --help
 ```
 
-[validation_ranksVsDeg.py](validation_ranksVsDeg.py) examines the relationship between the degrees of the left-out genes and the differences in their ranks between GBA centrality and MultiXrank, and between GBA centrality and NetCore.
+[validation_ranksVsDeg.py](validation_ranksVsDeg.py) examines the relationship between the degrees of the left-out genes and the differences in their ranks between BFWalk and MultiXrank, and between BFWalk and NetCore.
 
 ```
 python validation_ranksVsDeg.py --help
