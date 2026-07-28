@@ -194,7 +194,7 @@ def plot_CDF(GBA_curve, GBA_AUC, random_curve, network_size, out="CDF.png",
     matplotlib.pyplot.yticks(fontsize=11)
     matplotlib.pyplot.legend(loc='lower right', fontsize=12)
 
-    matplotlib.pyplot.savefig(out, dpi=1000)
+    matplotlib.pyplot.savefig(out, dpi=500)
 
     logger.info(f"CDF curve saved to {out}")
 
@@ -280,18 +280,24 @@ if __name__ == "__main__":
         """)
     parser.add_argument('--network',
                         help="Path to the network SIF file",
+                        type=pathlib.Path,
                         required=True)
     parser.add_argument('--GBA_ranks',
                         help="Path to the GBA ranks file (TSV with header, columns: NODE, RANK)",
+                        type=pathlib.Path,
                         required=True)
     parser.add_argument('--multixrank_ranks',
                         help="Path to the MultiXrank ranks file (TSV with header, columns: NODE, RANK)",
-                        required=False, default=None)
+                        type=pathlib.Path,
+                        required=False,
+                        default=None)
     parser.add_argument('--netcore_LOO_dir',
                         help="Path to the directory with NetCore scores files for left-out nodes, " \
                         "eg. for each left-out node scores for all nodes in the interactome are in: " \
                         "netcore-output/{PHENOTYPE}/output_{LEFT-OUT-NODE}/random_walk_weights.txt",
-                        required=False, default=None)
+                        type=pathlib.Path,
+                        required=False,
+                        default=None)
     parser.add_argument('--cdf',
                         help="Path to the output figure for the CDF curve (default: CDF.png)",
                         type=pathlib.Path,
@@ -309,7 +315,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        main(args.network, args.GBA_ranks,
+        main(args.network,
+             args.GBA_ranks,
              multixrank_ranks_file=args.multixrank_ranks,
              netcore_LOO_dir=args.netcore_LOO_dir,
              cdf_path=args.cdf,
