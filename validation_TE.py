@@ -335,7 +335,7 @@ def main(network_file, uniprot_file, gtex_file, GBA_scores_file,
         logger.warning("Provide MultiXrank and/or NetCore scores files")
         raise Exception("No MultiXrank and/or NetCore scores files provided")
 
-    logger.info("Parsing network")
+    logger.info(f"Parsing network {network_file}")
     (edge_list, node2idx, idx2node) = data_parser.parse_network(network_file, weighted, directed)
 
     # construct a networkx Graph from the edge list

@@ -202,7 +202,7 @@ def plot_CDF(GBA_curve, GBA_AUC, random_curve, network_size, out="CDF.png",
 def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_LOO_dir=None,
          cdf_path=None, weighted=False, directed=False):
     
-    logger.info("Parsing network")
+    logger.info(f"Parsing network {network_file}")
     (edge_list, node2idx, idx2node) = data_parser.parse_network(network_file, weighted, directed)
 
     # construct a networkx Graph from the edge list
