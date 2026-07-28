@@ -89,8 +89,7 @@ def netcore_scores_to_ranks(left_out, netcore_LOO_dir, n_nodes):
     for left_out_node in left_out:
         netcore_LOO_file = os.path.join(netcore_LOO_dir, f"output_{left_out_node}", "random_walk_weights.txt")
         if not os.path.isfile(netcore_LOO_file):
-            logger.warning(f"NetCore scores file not found for left-out node {left_out_node}")
-            continue
+                    raise Exception(f"NetCore scores file not found for left-out node {left_out_node}: {netcore_LOO_file}")
 
         with open(netcore_LOO_file, 'r') as f:
             header = f.readline()
@@ -186,7 +185,7 @@ def main(network_file, phenotypes, GBA_out_dir, multixrank_out_dir=None, netcore
 
     rankVsDeg_dir.parent.mkdir(parents=True, exist_ok=True)  # Path.parent of a bare filename returns Path("."), and mkdir on "."
 
-    logger.info("Parsing network")
+    logger.info(f"Parsing network {network_file}")
     (edge_list, node2idx, idx2node) = data_parser.parse_network(network_file, weighted, directed)
 
     # construct a networkx Graph from the edge list
@@ -201,48 +200,47 @@ def main(network_file, phenotypes, GBA_out_dir, multixrank_out_dir=None, netcore
         network_degrees.append(interactome.degree(node))
     logger.info(f"node degree mean: {round(statistics.mean(network_degrees))}, median: {round(statistics.median(network_degrees))}")
 
-    logger.info("Parsing GBA centrality ranks")
-    GBA_node2rank = {}  # dict to store node-rank pairs for all phenotypes combined
+    # dicts to store node-rank pairs for all phenotypes combined
+    GBA_node2rank = {}
+    multixrank_node2rank = {}
+    netcore_node2rank = {}
+
     for phenotype in phenotypes:
+        logger.info(f"Phenotype: {phenotype}")
+        logger.info("Parsing GBA centrality ranks")
         # search all subdirectories of the GBA output directory for "ranks_LOO.tsv"
         GBA_ranks_file = os.path.join(GBA_out_dir, phenotype, "ranks_LOO.tsv")
         GBA_node2rank_pheno = parse_ranks(GBA_ranks_file)
         GBA_node2rank.update(GBA_node2rank_pheno)
-    logger.info(f"Found {len(GBA_node2rank)} left-out nodes")
 
-    if multixrank_out_dir:
-        multixrank_node2rank = {}  # dict to store node-rank pairs for all phenotypes combined
-        logger.info("Parsing MultiXrank ranks")
-        for phenotype in phenotypes:
-            # search all subdirectories of the MultiXrank output directory for "ranks_LOO.tsv"
+        if multixrank_out_dir:
+            logger.info("Parsing MultiXrank ranks")
             multixrank_ranks_file = os.path.join(multixrank_out_dir, phenotype, "ranks_LOO.tsv")
             multixrank_node2rank_pheno = parse_ranks(multixrank_ranks_file)
             multixrank_node2rank.update(multixrank_node2rank_pheno)
-        assert len(GBA_node2rank) == len(multixrank_node2rank), "GBA and MultiXrank ranks files have different number of left-out nodes"
-        logger.info("GBA centrality vs MultiXrank:")
-        (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(GBA_node2rank,
-                                                                                                            multixrank_node2rank,
-                                                                                                            interactome)
-        rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_GBA_vs_RWR.png")
-        plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
+            assert len(GBA_node2rank) == len(multixrank_node2rank), "GBA and MultiXrank ranks files have different number of left-out nodes"
+            logger.info("GBA centrality vs MultiXrank:")
+            (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(GBA_node2rank,
+                                                                                                                multixrank_node2rank,
+                                                                                                                interactome)
+            rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_GBA_vs_RWR.png")
+            plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
 
-    if netcore_out_dir:
-        netcore_node2rank = {}  # dict to store node-rank pairs for all phenotypes combined
-        logger.info("Parsing NetCore scores")
-        for phenotype in phenotypes:
-            # search the directory with NetCore scores files for left-out nodes,
-            # eg. for each left-out node scores for all nodes in the interactome are in:
-            # netcore-output/{PHENOTYPE}/output_{LEFT-OUT-NODE}/random_walk_weights.txt
+        if netcore_out_dir:
+            logger.info("Parsing NetCore scores")
             netcore_LOO_dir = os.path.join(netcore_out_dir, phenotype)
-            netcore_node2rank_pheno = netcore_scores_to_ranks(GBA_node2rank.keys(), netcore_LOO_dir, len(node2idx))
+            netcore_node2rank_pheno = netcore_scores_to_ranks(GBA_node2rank_pheno.keys(), netcore_LOO_dir, len(node2idx))
             netcore_node2rank.update(netcore_node2rank_pheno)
-        assert len(GBA_node2rank) == len(netcore_node2rank), "GBA and NetCore ranks files have different number of left-out nodes"
-        logger.info("GBA centrality vs NetCore:")
-        (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(GBA_node2rank,
-                                                                                                            netcore_node2rank,
-                                                                                                            interactome)
-        rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_GBA_vs_NetCore.png")
-        plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
+            assert len(GBA_node2rank) == len(netcore_node2rank), "GBA and NetCore ranks files have different number of left-out nodes"
+            logger.info("GBA centrality vs NetCore:")
+            (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(GBA_node2rank,
+                                                                                                                netcore_node2rank,
+                                                                                                                interactome)
+            rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_GBA_vs_NetCore.png")
+            plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
+
+    logger.info(f"Found {len(GBA_node2rank)} left-out nodes")
+
 
 if __name__ == "__main__":
     script_name = os.path.basename(sys.argv[0])
