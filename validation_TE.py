@@ -26,7 +26,7 @@ import networkx
 import scipy
 import matplotlib.pyplot
 
-sys.path.append("/home/kubicaj/Software/GBA-centrality")
+sys.path.append("/home/kubicaj/Software/BFWalk")
 import data_parser
 
 # set up logger, using inherited config, in case we get called as a module
@@ -117,7 +117,7 @@ def parse_expression_data(expression_data):
     return(gene2enrichment)
 
 
-def parse_GBA_scores(scores_file):
+def parse_BFWalk_scores(scores_file):
     """
     Parses a TSV ranks file (with header) with two columns: NODE, SCORE
 
@@ -325,7 +325,7 @@ def comparison_matrix_row(method, highest_scoring, tissue_enriched, non_tissue_e
 ########### MAIN ###########
 ############################
 
-def main(network_file, uniprot_file, gtex_file, GBA_scores_file,
+def main(network_file, uniprot_file, gtex_file, BFWalk_scores_file,
          multixrank_scores_file=None, netcore_scores_file=None,
          comparison_matrix_path="comparison_matrix.png",
          highest_scoring_threshold=10.0, enrichement_threshold=10.0,
@@ -365,15 +365,15 @@ def main(network_file, uniprot_file, gtex_file, GBA_scores_file,
 
     comparison_matrix = []
     row_labels = []
-    logger.info("Parsing GBA centrality scores")
-    GBA_node2score = parse_GBA_scores(GBA_scores_file)
-    (GBA_highest_scoring, GBA_low_scoring) = get_highest_scoring_nodes(GBA_node2score, interactome, protein2enrichment, highest_scoring_threshold)
-    logger.info(f"GBA: Selected {len(GBA_highest_scoring)} highest-scoring genes")
-    GBA_pvalue = contingency_matrix(GBA_highest_scoring, GBA_low_scoring, tissue_enriched, non_tissue_enriched)
-    logger.info(f"GBA enrichment: {GBA_pvalue}")
-    GBA_comparison_row = comparison_matrix_row("GBA centrality", GBA_highest_scoring, tissue_enriched, non_tissue_enriched, GBA_pvalue)
-    comparison_matrix.append(GBA_comparison_row)
-    row_labels.append("GBA centrality")
+    logger.info("Parsing BFWalk scores")
+    BFWalk_node2score = parse_BFWalk_scores(BFWalk_scores_file)
+    (BFWalk_highest_scoring, BFWalk_low_scoring) = get_highest_scoring_nodes(BFWalk_node2score, interactome, protein2enrichment, highest_scoring_threshold)
+    logger.info(f"BFWalk: Selected {len(BFWalk_highest_scoring)} highest-scoring genes")
+    BFWalk_pvalue = contingency_matrix(BFWalk_highest_scoring, BFWalk_low_scoring, tissue_enriched, non_tissue_enriched)
+    logger.info(f"BFWalk enrichment: {BFWalk_pvalue}")
+    BFWalk_comparison_row = comparison_matrix_row("BFWalk", BFWalk_highest_scoring, tissue_enriched, non_tissue_enriched, BFWalk_pvalue)
+    comparison_matrix.append(BFWalk_comparison_row)
+    row_labels.append("BFWalk")
 
     if multixrank_scores_file:
         logger.info("Parsing MultiXrank scores")
@@ -434,7 +434,7 @@ if __name__ == "__main__":
         prog=script_name,
         description="""
         Validation of the tissue enrichment of the highest scoring genes,
-        using the GBA centrality, MultiXrank and NetCore scores.
+        using the BFWalk, MultiXrank and NetCore scores.
         """)
     parser.add_argument('--network',
                         help="Path to the network SIF file",
@@ -450,8 +450,8 @@ if __name__ == "__main__":
                         "ENSG, tissue_expression_ratio, gene name, other columns",
                         type=pathlib.Path,
                         required=True)
-    parser.add_argument('--GBA_scores',
-                        help="Path to the GBA scores file (TSV with header, columns: NODE, SCORE)",
+    parser.add_argument('--BFWalk_scores',
+                        help="Path to the BFWalk scores file (TSV with header, columns: NODE, SCORE)",
                         type=pathlib.Path,
                         required=True)
     parser.add_argument('--multixrank_scores',
@@ -494,7 +494,7 @@ if __name__ == "__main__":
         main(args.network,
              args.uniprot,
              args.gtex,
-             args.GBA_scores,
+             args.BFWalk_scores,
              multixrank_scores_file=args.multixrank_scores,
              netcore_scores_file=args.netcore_scores,
              comparison_matrix_path=args.matrix,

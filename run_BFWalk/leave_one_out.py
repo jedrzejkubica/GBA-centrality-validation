@@ -23,13 +23,13 @@ import pathlib
 
 import argparse
 
-PATH_TO_GBA = "/home/kubicaj/Software/GBA-centrality"
-sys.path.append(PATH_TO_GBA)
-import GBA_centrality
+PATH_TO_BFWalk = "/home/kubicaj/Software/BFWalk"
+sys.path.append(PATH_TO_BFWalk)
+import BFWalk
 import data_parser
 
 
-def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH_TO_GBA, threads):
+def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH_TO_BFWalk, threads):
     '''
     arguments:
     - network: list of "edges", an edge is a tuple (source, dest, weight) where
@@ -39,7 +39,7 @@ def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH
     - seeds: list of floats of length num_nodes, value=1 if node in seeds and 0 otherwise
     - alpha: attenuation coefficient (parameter set by user)
     - cacheFile: path to cache file 
-    - PATH_TO_GBA: path to GBA centrality
+    - PATH_TO_BFWalk: path to BFWalk
     - threads: number of threads to use, 0 to use all available cores
 
     returns:
@@ -54,7 +54,7 @@ def leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH
         logger.info("Leaving out %s", node)
         seeds_vector_copy = seeds_vector.copy()
         seeds_vector_copy[node2idx[node]] = 0
-        scores = GBA_centrality.calculate_scores(network, node2idx, seeds_vector_copy, alpha, cacheFile, PATH_TO_GBA, threads)
+        scores = BFWalk.calculate_scores(network, node2idx, seeds_vector_copy, alpha, cacheFile, PATH_TO_BFWalk, threads)
         # save score
         scores_left_out[node] = scores[node2idx[node]]
 
@@ -97,7 +97,7 @@ def ranks_to_TSV(ranks, out_dir):
 
 
 def main(network_file, seeds_file, alpha, weighted, directed,
-         out_dir, cacheFile, PATH_TO_GBA, threads):
+         out_dir, cacheFile, PATH_TO_BFWalk, threads):
     
     logger.info("Parsing network")
     (network, node2idx, idx2node) = data_parser.parse_network(network_file, weighted, directed)
@@ -106,7 +106,7 @@ def main(network_file, seeds_file, alpha, weighted, directed,
     (seeds, seeds_vector) = data_parser.parse_seeds(seeds_file, node2idx)
 
     logger.info("Calculating leave-one-out ranks")
-    (scores, ranks) = leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH_TO_GBA, threads)
+    (scores, ranks) = leave_one_out(network, node2idx, seeds, seeds_vector, alpha, cacheFile, PATH_TO_BFWalk, threads)
 
     logger.info(f"Saving leave-one-out scores to {out_dir}")
     scores_to_TSV(scores, out_dir)
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog=script_name,
         description="""
-        Leave-one-out validation for GBA centrality.
+        Leave-one-out validation for BFWalk.
 
         For each causal gene, the method calculates its ranks when left-out from the causal gene list.
         """
@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
     try:
         main(args.network, args.seeds, args.alpha, args.weighted,
-             args.directed, args.out, args.cacheFile, PATH_TO_GBA, args.threads)
+             args.directed, args.out, args.cacheFile, PATH_TO_BFWalk, args.threads)
     except Exception as e:
         # details on the issue should be in the exception name, print it to stderr and die
         sys.stderr.write("ERROR in " + script_name + " : " + repr(e) + "\n")

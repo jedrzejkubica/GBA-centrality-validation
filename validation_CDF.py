@@ -27,7 +27,7 @@ import numpy
 import networkx
 import matplotlib.pyplot
 
-sys.path.append("/home/kubicaj/Software/GBA-centrality")
+sys.path.append("/home/kubicaj/Software/BFWalk")
 import data_parser
 
 # set up logger, using inherited config, in case we get called as a module
@@ -178,10 +178,10 @@ def ranks_to_curve(ranks, network_size):
     return(curve, AUC_norm)
 
 
-def plot_CDF(GBA_curve, GBA_AUC, random_curve, network_size, out="CDF.png",
+def plot_CDF(BFWalk_curve, BFWalk_AUC, random_curve, network_size, out="CDF.png",
              multixrank_curve=None, multixrank_AUC=None, netcore_curve=None, netcore_AUC=None):
     x = range(network_size)
-    matplotlib.pyplot.plot(x, GBA_curve, label="GBA centrality (AUC={:.3f})".format(GBA_AUC), color="#D81B60")
+    matplotlib.pyplot.plot(x, BFWalk_curve, label="BFWalk (AUC={:.3f})".format(BFWalk_AUC), color="#D81B60")
     if multixrank_curve:
         matplotlib.pyplot.plot(x, multixrank_curve, label="MultiXrank (AUC={:.3f})".format(multixrank_AUC), color="#FFC107")
     if netcore_curve:
@@ -199,7 +199,7 @@ def plot_CDF(GBA_curve, GBA_AUC, random_curve, network_size, out="CDF.png",
     logger.info(f"CDF curve saved to {out}")
 
 
-def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_LOO_dir=None,
+def main(network_file, BFWalk_ranks_file, multixrank_ranks_file=None, netcore_LOO_dir=None,
          cdf_path=None, weighted=False, directed=False):
     
     logger.info(f"Parsing network {network_file}")
@@ -217,27 +217,27 @@ def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_LOO_d
         network_degrees.append(interactome.degree(node))
     logger.info(f"node degree mean: {round(statistics.mean(network_degrees))}, median: {round(statistics.median(network_degrees))}")
 
-    logger.info("Parsing GBA centrality ranks")
-    GBA_node2rank = parse_ranks(GBA_ranks_file)
+    logger.info("Parsing BFWalk ranks")
+    BFWalk_node2rank = parse_ranks(BFWalk_ranks_file)
     if multixrank_ranks_file:
         logger.info("Parsing MultiXrank ranks")
         multixrank_node2rank = parse_ranks(multixrank_ranks_file)
-        assert len(GBA_node2rank) == len(multixrank_node2rank), "GBA and MultiXrank ranks files have different number of left-out nodes"
+        assert len(BFWalk_node2rank) == len(multixrank_node2rank), "BFWalk and MultiXrank ranks files have different number of left-out nodes"
     if netcore_LOO_dir:
         logger.info("Parsing NetCore scores")
-        netcore_node2rank = netcore_scores_to_ranks(GBA_node2rank.keys(), netcore_LOO_dir, len(node2idx))
-        assert len(GBA_node2rank) == len(netcore_node2rank), "GBA and NetCore ranks files have different number of left-out nodes"
-    logger.info(f"Found {len(GBA_node2rank)} left-out nodes")
+        netcore_node2rank = netcore_scores_to_ranks(BFWalk_node2rank.keys(), netcore_LOO_dir, len(node2idx))
+        assert len(BFWalk_node2rank) == len(netcore_node2rank), "BFWalk and NetCore ranks files have different number of left-out nodes"
+    logger.info(f"Found {len(BFWalk_node2rank)} left-out nodes")
 
     # calculate the mean and median degree of the left-out genes (seeds)
     seeds_degrees = []
-    for protein in GBA_node2rank:
+    for protein in BFWalk_node2rank:
         seeds_degrees.append(interactome.degree(protein))
     logger.info(f"left-out degree mean: {round(statistics.mean(seeds_degrees))}, median: {round(statistics.median(seeds_degrees))}")
 
     logger.info("Calculating CDF curves and AUCs")
-    (GBA_curve, GBA_AUC) = ranks_to_curve(GBA_node2rank.values(), len(node2idx))
-    logger.info(f"AUC: {GBA_AUC:.3f} (GBA centrality)")
+    (BFWalk_curve, BFWalk_AUC) = ranks_to_curve(BFWalk_node2rank.values(), len(node2idx))
+    logger.info(f"AUC: {BFWalk_AUC:.3f} (BFWalk)")
 
     optional_kwargs = {}  # dict for plotting
     if multixrank_ranks_file is not None:
@@ -250,12 +250,12 @@ def main(network_file, GBA_ranks_file, multixrank_ranks_file=None, netcore_LOO_d
         logger.info(f"AUC: {netcore_AUC:.3f} (NetCore)")
         optional_kwargs.update({'netcore_curve': netcore_curve, 'netcore_AUC': netcore_AUC})
 
-    random_ranks = generate_random_ranks(len(GBA_node2rank), len(node2idx))
+    random_ranks = generate_random_ranks(len(BFWalk_node2rank), len(node2idx))
     (random_curve, random_AUC) = ranks_to_curve(random_ranks, len(node2idx))
 
     cdf_path.parent.mkdir(parents=True, exist_ok=True)  # Path.parent of a bare filename returns Path("."), and mkdir on "."
-    plot_CDF(GBA_curve=GBA_curve,
-             GBA_AUC=GBA_AUC,
+    plot_CDF(BFWalk_curve=BFWalk_curve,
+             BFWalk_AUC=BFWalk_AUC,
              random_curve=random_curve,
              network_size=len(interactome.nodes()),
              out=cdf_path,
@@ -274,7 +274,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog=script_name,
         description="""
-        Validation of GBA centrality ranks by plotting the cumulative distribution function (CDF) of left-out genes ranks.
+        Validation of BFWalk ranks by plotting the cumulative distribution function (CDF) of left-out genes ranks.
         The CDF curve shows the number of left-out genes with rank <= x for each rank x.
         The area under the curve (AUC) is also calculated and shown in the legend.
         """)
@@ -282,8 +282,8 @@ if __name__ == "__main__":
                         help="Path to the network SIF file",
                         type=pathlib.Path,
                         required=True)
-    parser.add_argument('--GBA_ranks',
-                        help="Path to the GBA ranks file (TSV with header, columns: NODE, RANK)",
+    parser.add_argument('--BFWalk_ranks',
+                        help="Path to the BFWalk ranks file (TSV with header, columns: NODE, RANK)",
                         type=pathlib.Path,
                         required=True)
     parser.add_argument('--multixrank_ranks',
@@ -316,7 +316,7 @@ if __name__ == "__main__":
 
     try:
         main(args.network,
-             args.GBA_ranks,
+             args.BFWalk_ranks,
              multixrank_ranks_file=args.multixrank_ranks,
              netcore_LOO_dir=args.netcore_LOO_dir,
              cdf_path=args.cdf,

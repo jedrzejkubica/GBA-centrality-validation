@@ -28,7 +28,7 @@ import networkx
 import matplotlib.pyplot
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-sys.path.append("/home/kubicaj/Software/GBA-centrality")
+sys.path.append("/home/kubicaj/Software/BFWalk")
 import data_parser
 
 # set up logger, using inherited config, in case we get called as a module
@@ -117,24 +117,24 @@ def netcore_scores_to_ranks(left_out, netcore_LOO_dir, n_nodes):
     return(node2rank)
 
 
-def calculate_rank_difference(GBA_node2rank, other_method_node2rank, network):
-    ranks_GBA = []
+def calculate_rank_difference(BFWalk_node2rank, other_method_node2rank, network):
+    ranks_BFWalk = []
     ranks_other = []
     node_degrees = []
 
-    for node in GBA_node2rank:
-        ranks_GBA.append(GBA_node2rank[node])
+    for node in BFWalk_node2rank:
+        ranks_BFWalk.append(BFWalk_node2rank[node])
         ranks_other.append(other_method_node2rank[node])
         node_degrees.append(network.degree(node))
-    assert len(ranks_GBA) == len(ranks_other) == len(node_degrees)
+    assert len(ranks_BFWalk) == len(ranks_other) == len(node_degrees)
 
     rank_diff = []
     rank_diff_abs = []
     negative_rank_degrees = []
     positive_rank_degrees = []
 
-    for i in range(len(ranks_GBA)):
-        diff = ranks_GBA[i] - ranks_other[i]
+    for i in range(len(ranks_BFWalk)):
+        diff = ranks_BFWalk[i] - ranks_other[i]
         rank_diff.append(diff)
         rank_diff_abs.append(abs(diff))
 
@@ -157,7 +157,7 @@ def plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node
     ax.set_xlim(-(len(interactome)), len(interactome))
     ax.axvline(0, color='grey', linestyle='--', linewidth=1.5, zorder=2)
 
-    ax.set_xlabel("Rank diff (GBA rank - RWR rank)", fontsize=12)
+    ax.set_xlabel("Rank diff (BFWalk rank - RWR rank)", fontsize=12)
     ax.set_ylabel("Node degree", fontsize=12)
 
     ax.grid(True, linestyle='--', which='major',
@@ -176,7 +176,7 @@ def plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node
     matplotlib.pyplot.savefig(out, dpi=500)
 
 
-def main(network_file, phenotypes, GBA_out_dir, multixrank_out_dir=None, netcore_out_dir=None,
+def main(network_file, phenotypes, BFWalk_out_dir, multixrank_out_dir=None, netcore_out_dir=None,
          rankVsDeg_dir="./", weighted=False, directed=False):
 
     if not (multixrank_out_dir or netcore_out_dir):
@@ -201,45 +201,45 @@ def main(network_file, phenotypes, GBA_out_dir, multixrank_out_dir=None, netcore
     logger.info(f"node degree mean: {round(statistics.mean(network_degrees))}, median: {round(statistics.median(network_degrees))}")
 
     # dicts to store node-rank pairs for all phenotypes combined
-    GBA_node2rank = {}
+    BFWalk_node2rank = {}
     multixrank_node2rank = {}
     netcore_node2rank = {}
 
     for phenotype in phenotypes:
         logger.info(f"Phenotype: {phenotype}")
-        logger.info("Parsing GBA centrality ranks")
-        # search all subdirectories of the GBA output directory for "ranks_LOO.tsv"
-        GBA_ranks_file = os.path.join(GBA_out_dir, phenotype, "ranks_LOO.tsv")
-        GBA_node2rank_pheno = parse_ranks(GBA_ranks_file)
-        GBA_node2rank.update(GBA_node2rank_pheno)
+        logger.info("Parsing BFWalk ranks")
+        # search all subdirectories of the BFWalk output directory for "ranks_LOO.tsv"
+        BFWalk_ranks_file = os.path.join(BFWalk_out_dir, phenotype, "ranks_LOO.tsv")
+        BFWalk_node2rank_pheno = parse_ranks(BFWalk_ranks_file)
+        BFWalk_node2rank.update(BFWalk_node2rank_pheno)
 
         if multixrank_out_dir:
             logger.info("Parsing MultiXrank ranks")
             multixrank_ranks_file = os.path.join(multixrank_out_dir, phenotype, "ranks_LOO.tsv")
             multixrank_node2rank_pheno = parse_ranks(multixrank_ranks_file)
             multixrank_node2rank.update(multixrank_node2rank_pheno)
-            assert len(GBA_node2rank) == len(multixrank_node2rank), "GBA and MultiXrank ranks files have different number of left-out nodes"
-            logger.info("GBA centrality vs MultiXrank:")
-            (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(GBA_node2rank,
+            assert len(BFWalk_node2rank) == len(multixrank_node2rank), "BFWalk and MultiXrank ranks files have different number of left-out nodes"
+            logger.info("BFWalk vs MultiXrank:")
+            (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(BFWalk_node2rank,
                                                                                                                 multixrank_node2rank,
                                                                                                                 interactome)
-            rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_GBA_vs_RWR.png")
+            rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_BFWalk_vs_RWR.png")
             plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
 
         if netcore_out_dir:
             logger.info("Parsing NetCore scores")
             netcore_LOO_dir = os.path.join(netcore_out_dir, phenotype)
-            netcore_node2rank_pheno = netcore_scores_to_ranks(GBA_node2rank_pheno.keys(), netcore_LOO_dir, len(node2idx))
+            netcore_node2rank_pheno = netcore_scores_to_ranks(BFWalk_node2rank_pheno.keys(), netcore_LOO_dir, len(node2idx))
             netcore_node2rank.update(netcore_node2rank_pheno)
-            assert len(GBA_node2rank) == len(netcore_node2rank), "GBA and NetCore ranks files have different number of left-out nodes"
-            logger.info("GBA centrality vs NetCore:")
-            (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(GBA_node2rank,
+            assert len(BFWalk_node2rank) == len(netcore_node2rank), "BFWalk and NetCore ranks files have different number of left-out nodes"
+            logger.info("BFWalk vs NetCore:")
+            (rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees) = calculate_rank_difference(BFWalk_node2rank,
                                                                                                                 netcore_node2rank,
                                                                                                                 interactome)
-            rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_GBA_vs_NetCore.png")
+            rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_BFWalk_vs_NetCore.png")
             plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
 
-    logger.info(f"Found {len(GBA_node2rank)} left-out nodes")
+    logger.info(f"Found {len(BFWalk_node2rank)} left-out nodes")
 
 
 if __name__ == "__main__":
@@ -254,7 +254,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog=script_name,
         description="""
-        Validation of GBA centrality ranks by plotting the left-out genes ranks vs their degrees.
+        Validation of BFWalk ranks by plotting the left-out genes ranks vs their degrees.
         It assumes that for each method the output directory provided as input
         contain one subdirectory per phenotype and searches all these subdirectories for ranks files
         (or scores files for NetCore).
@@ -267,8 +267,8 @@ if __name__ == "__main__":
                         nargs='+',
                         help="List of phenotypes",
                         required=True)
-    parser.add_argument('--GBA_out_dir',
-                        help="Path to the GBA centrality output directory containing one subdirectory per phenotype (given by --phenotypes).",
+    parser.add_argument('--BFWalk_out_dir',
+                        help="Path to the BFWalk output directory containing one subdirectory per phenotype (given by --phenotypes).",
                         type=pathlib.Path,
                         required=True,)
     parser.add_argument('--multixrank_out_dir',
@@ -300,7 +300,7 @@ if __name__ == "__main__":
     try:
         main(args.network,
              args.phenotypes,
-             args.GBA_out_dir,
+             args.BFWalk_out_dir,
              multixrank_out_dir=args.multixrank_out_dir,
              netcore_out_dir=args.netcore_out_dir,
              rankVsDeg_dir=args.rankVsDeg,

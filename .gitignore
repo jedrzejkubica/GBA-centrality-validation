@@ -1,12 +1,13 @@
 *cache*
 .vscode/
+*backup*
 
 data/
 figures/
 
-GBA-input/
-GBA-output/
-GBA-README
+BFWalk-input/
+BFWalk-output/
+BFWalk-README
 
 multixrank-input/
 multixrank-output/
