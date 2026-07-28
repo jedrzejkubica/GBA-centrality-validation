@@ -19,3 +19,5 @@ netcore-README
 stats/
 network_stats.py
 seeds_stats.py
+
+validation_logs/
