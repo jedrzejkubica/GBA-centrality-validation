@@ -150,14 +150,14 @@ def calculate_rank_difference(BFWalk_node2rank, other_method_node2rank, network)
     return(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees)
 
 
-def plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, out):
+def plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, other_method, out):
     fig, ax = matplotlib.pyplot.subplots(figsize=(7, 6))
 
     ax.scatter(x=rank_diff, y=node_degrees, s=1, alpha=0.8, zorder=3)
     ax.set_xlim(-(len(interactome)), len(interactome))
     ax.axvline(0, color='grey', linestyle='--', linewidth=1.5, zorder=2)
 
-    ax.set_xlabel("Rank diff (BFWalk rank - RWR rank)", fontsize=12)
+    ax.set_xlabel(f"Rank diff (BFWalk rank - {other_method} rank)", fontsize=12)
     ax.set_ylabel("Node degree", fontsize=12)
 
     ax.grid(True, linestyle='--', which='major',
@@ -224,7 +224,7 @@ def main(network_file, phenotypes, BFWalk_out_dir, multixrank_out_dir=None, netc
                                                                                                                 multixrank_node2rank,
                                                                                                                 interactome)
             rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_BFWalk_vs_RWR.png")
-            plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
+            plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, "RWR", rankVsDeg_path)
 
         if netcore_out_dir:
             logger.info("Parsing NetCore scores")
@@ -237,7 +237,7 @@ def main(network_file, phenotypes, BFWalk_out_dir, multixrank_out_dir=None, netc
                                                                                                                 netcore_node2rank,
                                                                                                                 interactome)
             rankVsDeg_path = os.path.join(rankVsDeg_dir, "all_rank_vs_deg_BFWalk_vs_NetCore.png")
-            plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, rankVsDeg_path)
+            plot_rankVsDeg(rank_diff, negative_rank_degrees, positive_rank_degrees, node_degrees, interactome, "NetCore", rankVsDeg_path)
 
     logger.info(f"Found {len(BFWalk_node2rank)} left-out nodes")
 
